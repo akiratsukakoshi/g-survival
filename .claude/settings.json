@@ -30,7 +30,6 @@
       "Bash(curl -sf -o /dev/null --max-time 3 http://127.0.0.1:5173/)"
     ],
     "deny": [
-      "Bash(git push:*)",
       "Bash(git reset --hard:*)",
       "Bash(git revert:*)",
       "Bash(rm -rf:*)"
