@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build)",
+      "Bash(npm run dev)",
+      "Bash(npm install)",
+      "Bash(node --experimental-strip-types smoke.mjs)",
+      "Bash(node --experimental-strip-types playthrough.mjs:*)",
+      "Bash(node browser-audit.mjs)",
+      "Bash(node browser-check.mjs)",
+      "Bash(node browser-molt.mjs)",
+      "Bash(bash scripts/verify.sh)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git pull --rebase origin main)",
+      "Bash(git fetch:*)",
+      "Bash(git show:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(cat:*)",
+      "Bash(sed -n:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(curl -sf -o /dev/null --max-time 3 http://127.0.0.1:5173/)"
+    ],
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git revert:*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}
