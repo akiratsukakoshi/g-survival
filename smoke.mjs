@@ -80,4 +80,20 @@ test('climb: 0.35 秒の押し込みで張り付き、天面に登り、踏み�
  step(b,1,{...idle,x:-1});assert.equal(b.player.nx,0);assert.equal(b.player.z,0);  // 面から離れる向きに押すと降りる
  step(b,3.2,{...idle,freeze:true});assert(b.molting);                      // 床に戻れば脱皮できる
 });
+test('climb: 面の左右が入力方向と一致する(4面すべて)',()=>{
+ // [開始位置, 張り付くまで押す入力, 期待する法線, 横移動の入力, 見る軸]
+ const cases=[
+  [{x:6.75,y:4},{x:1}, [-1,0],{y:1},'y'],   // 塊 {x:7,y:2.5,w:4,h:3} の西面
+  [{x:11.25,y:4},{x:-1},[1,0], {y:1},'y'],  // 東面
+  [{x:9,y:2.25},{y:1}, [0,-1],{x:1},'x'],   // 南面
+  [{x:9,y:5.75},{y:-1},[0,1], {x:1},'x'],   // 北面
+ ];
+ for(const [start,grab,n,lat,axis] of cases){
+  const g=isolated();g.player={...start,angle:0,z:0,nx:0,ny:0};
+  step(g,.6,{...idle,...grab});
+  assert.equal(g.player.nx,n[0],`nx on face ${n}`);assert.equal(g.player.ny,n[1],`ny on face ${n}`);
+  const before=g.player[axis];step(g,.4,{...idle,...lat});const moved=g.player[axis]-before;
+  assert(moved>.2,`face ${n}: 入力 +${axis} に対して ${axis} が ${moved.toFixed(3)} しか動いていない(符号反転)`);
+ }
+});
 console.log(`${checks} regression groups passed`);

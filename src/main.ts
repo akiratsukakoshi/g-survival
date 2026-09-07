@@ -21,7 +21,7 @@ const camera=new THREE.PerspectiveCamera(CAM_FOV,innerWidth/innerHeight,.1,200);
 const camTarget=new THREE.Vector3(4,CAM_HEIGHT,-1),camOffset=new THREE.Vector3(-Math.sin(CAM_YAW)*Math.cos(CAM_PITCH),Math.sin(CAM_PITCH),Math.cos(CAM_YAW)*Math.cos(CAM_PITCH)).multiplyScalar(CAM_DIST);
 function placeCamera(){camera.position.copy(camTarget).add(camOffset);camera.lookAt(camTarget);}placeCamera();
 const lead={x:0,y:0};let travelling=false;
-const aimPlane=new THREE.Plane(new THREE.Vector3(0,1,0),-PLANE_H),aimRay=new THREE.Raycaster(),aimNdc=new THREE.Vector2(),aimHit=new THREE.Vector3();
+const aimPlane=new THREE.Plane(new THREE.Vector3(0,1,0),-PLANE_H),aimN=new THREE.Vector3(),aimRay=new THREE.Raycaster(),aimNdc=new THREE.Vector2(),aimHit=new THREE.Vector3();
 scene.add(new THREE.HemisphereLight('#b1becb','#302322',2.4));
 const moon=new THREE.DirectionalLight('#c0cee0',3);moon.position.set(14,14,6);moon.castShadow=true;moon.shadow.mapSize.set(2048,2048);moon.shadow.camera.left=-18;moon.shadow.camera.right=18;moon.shadow.camera.top=18;moon.shadow.camera.bottom=-18;moon.shadow.camera.near=.5;moon.shadow.camera.far=48;moon.shadow.bias=-.0012;scene.add(moon,moon.target);
 const warm=new THREE.PointLight('#cc9c78',20,16);warm.position.set(5,1.6,-1);scene.add(warm);
@@ -81,19 +81,38 @@ addEventListener('keydown',e=>{if(['Space','KeyW','KeyA','KeyS','KeyD','ArrowUp'
 addEventListener('blur',()=>{keys.clear();probe=false;});addEventListener('pointermove',e=>{mouse={x:e.clientX,y:e.clientY};});addEventListener('pointerdown',e=>{if(e.button===0&&!(e.target as HTMLElement).closest('button,input'))probe=true;});addEventListener('pointerup',()=>probe=false);
 function resize(){renderer.setSize(innerWidth,innerHeight);veil.width=innerWidth;veil.height=innerHeight;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}addEventListener('resize',resize);resize();
 function project(x:number,y:number,h=PLANE_H){const v=toWorld(x,y,h).project(camera);return{x:(v.x*.5+.5)*innerWidth,y:(-.5*v.y+.5)*innerHeight};}
-let aim={x:5,y:1};const remembered=new Set<number>();
-function reach(x:number,y:number,dx:number,dy:number,max:number){for(let t=.12;t<max;t+=.12){const px=x+dx*t,py=y+dy*t;if(OBSTACLES.some(o=>px>o.x&&px<o.x+o.w&&py>o.y&&py<o.y+o.h))return t;}return max;}
+let aim={u:5,v:1};const remembered=new Set<number>();
+// 高さ z から見た遮蔽。自分より低い塊は見下ろせる(乗っている塊に視界を切られない)。
+function reach(x:number,y:number,dx:number,dy:number,max:number,z=0){for(let t=.12;t<max;t+=.12){const px=x+dx*t,py=y+dy*t;if(OBSTACLES.some(o=>o.top>z+.02&&px>o.x&&px<o.x+o.w&&py>o.y&&py<o.y+o.h))return t;}return max;}
+// 接触面のパラメータ空間 (u,v) ↔ ワールド。床/天面は (x,y)、壁は (面に沿う座標, 高さ)。
+const projV=new THREE.Vector3();
+function projectV(w:THREE.Vector3){const v=projV.copy(w).project(camera);return{x:(v.x*.5+.5)*innerWidth,y:(-.5*v.y+.5)*innerHeight};}
+function surfWorld(u:number,v:number){const p=game.player;
+ if(!p.nx&&!p.ny)return toWorld(u,v,PLANE_H+p.z);
+ if(p.nx)return new THREE.Vector3(p.x+p.nx*PLANE_H,v+.05,-(u*p.nx));
+ return new THREE.Vector3(u*-p.ny,v+.05,-(p.y+p.ny*PLANE_H));}
+// 面の上では扇形は面の縁で切れる(壁の端・天面・床)。床では従来どおり塊で遮られる。
+function surfReach(u:number,v:number,du:number,dv:number,max:number){const p=game.player,f=game.face;
+ if(!f)return reach(u,v,du,dv,max,p.z);
+ const k=p.nx||-p.ny,a=f.lo*k,b=f.hi*k,uLo=Math.min(a,b),uHi=Math.max(a,b);let t=max;
+ if(du>1e-6)t=Math.min(t,(uHi-u)/du);else if(du<-1e-6)t=Math.min(t,(uLo-u)/du);
+ if(dv>1e-6)t=Math.min(t,(f.top-v)/dv);else if(dv<-1e-6)t=Math.min(t,-v/dv);
+ return Math.max(0,Math.min(t,max));}
 function sense(){return .4+.6*Math.min(game.hunger,game.water);}
-function visible(x:number,y:number){const dx=x-game.player.x,dy=y-game.player.y,dist=Math.hypot(dx,dy);if(dist<.65*sense())return true;const a=Math.atan2(dy,dx),target=Math.atan2(aim.y-game.player.y,aim.x-game.player.x);const delta=Math.atan2(Math.sin(a-target),Math.cos(a-target));return Math.abs(delta)<(probe?.87:.52)&&dist<(probe?4:2.4)*sense()&&reach(game.player.x,game.player.y,Math.cos(a),Math.sin(a),dist)>=dist-.15;}
+function visible(x:number,y:number){const pl=game.player,dx=x-pl.x,dy=y-pl.y,dist=Math.hypot(dx,dy);if(dist<.65*sense())return true;
+ // 壁に貼り付いている間は床を扇形で走査できない。手が届く範囲だけが分かる(高所の安全と引き換え)。
+ if(pl.nx||pl.ny)return dist<1.15*sense();
+ const a=Math.atan2(dy,dx),target=Math.atan2(aim.v-pl.y,aim.u-pl.x);const delta=Math.atan2(Math.sin(a-target),Math.cos(a-target));
+ return Math.abs(delta)<(probe?.87:.52)&&dist<(probe?4:2.4)*sense()&&reach(pl.x,pl.y,Math.cos(a),Math.sin(a),dist,pl.z)>=dist-.15;}
 // 明るさ調整。VEIL_ALPHA を下げる / 他を上げると全体が明るくなる。ガクチョの体感で詰める値。
 const VEIL_ALPHA=.88,NEAR_SPAN=1.25,NEAR_MID=.97,FAN_CORE=.97,FAN_MID=.8;
 function darkness(){
  ctx.clearRect(0,0,veil.width,veil.height);ctx.fillStyle=`rgba(3,5,7,${VEIL_ALPHA})`;ctx.fillRect(0,0,veil.width,veil.height);
- const ph=PLANE_H+game.player.z;
- const p=project(game.player.x,game.player.y,ph),pu=project(game.player.x+1,game.player.y,ph),scale=Math.hypot(pu.x-p.x,pu.y-p.y),radius=scale*.9*NEAR_SPAN*sense();
+ const u0=game.faceU(),v0=game.faceV();
+ const p=projectV(surfWorld(u0,v0)),pu=projectV(surfWorld(u0+1,v0)),scale=Math.hypot(pu.x-p.x,pu.y-p.y),radius=scale*.9*NEAR_SPAN*sense();
  ctx.globalCompositeOperation='destination-out';const near=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,radius);near.addColorStop(0,'rgba(0,0,0,1)');near.addColorStop(.55,`rgba(0,0,0,${NEAR_MID})`);near.addColorStop(1,'transparent');ctx.fillStyle=near;ctx.fillRect(p.x-radius,p.y-radius,2*radius,2*radius);
- const angle=Math.atan2(aim.y-game.player.y,aim.x-game.player.x),range=(probe?4:2.4)*sense(),spread=probe?.87:.52;
- const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,range*scale);g.addColorStop(0,`rgba(0,0,0,${FAN_CORE})`);g.addColorStop(.7,`rgba(0,0,0,${FAN_MID})`);g.addColorStop(1,'transparent');ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(p.x,p.y);for(let i=0;i<=50;i++){const a=angle-spread+spread*2*i/50;const r=reach(game.player.x,game.player.y,Math.cos(a),Math.sin(a),range);const q=project(game.player.x+Math.cos(a)*r,game.player.y+Math.sin(a)*r);ctx.lineTo(q.x,q.y);}ctx.closePath();ctx.fill();ctx.globalCompositeOperation='source-over';
+ const angle=Math.atan2(aim.v-v0,aim.u-u0),range=(probe?4:2.4)*sense(),spread=probe?.87:.52;
+ const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,range*scale);g.addColorStop(0,`rgba(0,0,0,${FAN_CORE})`);g.addColorStop(.7,`rgba(0,0,0,${FAN_MID})`);g.addColorStop(1,'transparent');ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(p.x,p.y);for(let i=0;i<=50;i++){const a=angle-spread+spread*2*i/50;const r=surfReach(u0,v0,Math.cos(a),Math.sin(a),range);const q=projectV(surfWorld(u0+Math.cos(a)*r,v0+Math.sin(a)*r));ctx.lineTo(q.x,q.y);}ctx.closePath();ctx.fill();ctx.globalCompositeOperation='source-over';
  OBSTACLES.forEach((o,i)=>{if([[o.x-.1,o.y],[o.x+o.w+.1,o.y],[o.x,o.y+o.h+.1],[o.x+o.w/2,o.y-.1]].some(([x,y])=>visible(x,y)))remembered.add(i);if(remembered.has(i)){const q=[[o.x,o.y],[o.x+o.w,o.y],[o.x+o.w,o.y+o.h],[o.x,o.y+o.h]].map(([x,y])=>project(x,y,o.top));ctx.strokeStyle='rgba(157,164,149,.23)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(q[0].x,q[0].y);for(let k=1;k<4;k++)ctx.lineTo(q[k].x,q[k].y);ctx.closePath();ctx.stroke();}});
  checkpointModels.forEach((m,i)=>{const c=game.checkpoints[i];if(visible(c.x,c.y)){const q=project(c.x,c.y);ctx.strokeStyle='rgba(195,181,123,.5)';ctx.beginPath();ctx.arc(q.x,q.y,14,0,Math.PI*2);ctx.stroke();}});
  const d=game.danger.strength;if(d>0){const t=project(game.danger.x,game.danger.y);const a=Math.atan2(t.y-p.y,t.x-p.x);const k=Math.min(innerWidth/2/Math.max(.01,Math.abs(Math.cos(a))),innerHeight/2/Math.max(.01,Math.abs(Math.sin(a))));const x=innerWidth/2+Math.cos(a)*k,y=innerHeight/2+Math.sin(a)*k;const glow=ctx.createRadialGradient(x,y,0,x,y,170);glow.addColorStop(0,`rgba(184,201,209,${Math.min(.6,d*.6)})`);glow.addColorStop(1,'transparent');ctx.fillStyle=glow;ctx.fillRect(0,0,innerWidth,innerHeight);}
@@ -115,8 +134,12 @@ let previous=performance.now(),accumulator=0;function frame(now:number){requestA
  // 蛇行するので先読みは +X 固定ではなく、実際に進んでいる向きへ。ゆっくり効かせないと酔う。
  lead.x+=((travelling?Math.cos(bodyHeading)*CAM_LEAD:0)-lead.x)*Math.min(1,dt*.9);lead.y+=((travelling?Math.sin(bodyHeading)*CAM_LEAD:0)-lead.y)*Math.min(1,dt*.9);
  camTarget.x+=((started?p.x+lead.x:4)-camTarget.x)*damp;camTarget.z+=(-(started?p.y+lead.y:4)-camTarget.z)*damp;camTarget.y+=(CAM_HEIGHT+p.z*.55-camTarget.y)*damp;camTarget.y+=Math.sin(now*.055)*game.humanEvent*.08;placeCamera();camera.updateMatrixWorld();
- aimNdc.set(mouse.x/innerWidth*2-1,1-mouse.y/innerHeight*2);aimRay.setFromCamera(aimNdc,camera);if(aimRay.ray.intersectPlane(aimPlane,aimHit))aim={x:aimHit.x,y:-aimHit.z};
- const input={x:Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft')),y:Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown')),sprint:keys.has('ShiftLeft')||keys.has('ShiftRight'),freeze:keys.has('Space'),probe,aimX:aim.x,aimY:aim.y};
+ aimNdc.set(mouse.x/innerWidth*2-1,1-mouse.y/innerHeight*2);aimRay.setFromCamera(aimNdc,camera);
+ if(!p.nx&&!p.ny)aimPlane.set(aimN.set(0,1,0),-(PLANE_H+p.z));
+ else if(p.nx)aimPlane.set(aimN.set(p.nx,0,0),-p.nx*(p.x+p.nx*PLANE_H));
+ else aimPlane.set(aimN.set(0,0,-p.ny),p.ny*-(p.y+p.ny*PLANE_H));
+ if(aimRay.ray.intersectPlane(aimPlane,aimHit))aim=(!p.nx&&!p.ny)?{u:aimHit.x,v:-aimHit.z}:p.nx?{u:-aimHit.z*p.nx,v:aimHit.y-.05}:{u:aimHit.x*-p.ny,v:aimHit.y-.05};
+ const input={x:Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft')),y:Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown')),sprint:keys.has('ShiftLeft')||keys.has('ShiftRight'),freeze:keys.has('Space'),probe,aimX:aim.u,aimY:aim.v};
  if(started&&!ended&&hatchTime>=4&&Math.hypot(camTarget.x-p.x,camTarget.z+p.y)<CAM_CATCHUP){accumulator+=dt;while(accumulator>=1/60){game.update(1/60,input);accumulator-=1/60;}}
  const dxs=p.x-lastX,dys=p.y-lastY,dzs=p.z-lastZ;
  // 面に貼り付いている間は (面に沿う水平方向, 高さ) が進行方向。張り付き/離脱の座標跳びは travel から除く。
@@ -126,7 +149,7 @@ let previous=performance.now(),accumulator=0;function frame(now:number){requestA
  travelling=travel>.004;lastX=p.x;lastY=p.y;lastZ=p.z;
  const oldHatch=hatchTime;if(started)hatchTime=Math.min(4,(now-hatchStarted)/1000);if(oldHatch<4&&hatchTime>=4){game.siblings.forEach((s,i)=>{s.x=4+Math.cos(i*2.4)*2.2;s.y=4+Math.sin(i*2.4)*2.2;});}eggLeft.position.x=4-Math.min(1,hatchTime/3)*.4;eggRight.position.x=4+Math.min(1,hatchTime/3)*.4;eggLeft.rotation.y=-hatchTime*.08;eggRight.rotation.y=hatchTime*.08;heroPin.visible=started;pose(heroPin,p.x,p.y,p.z,p.nx,p.ny);animateAnimal(hero,now/1000,travel/Math.max(dt,.001),bodyHeading,game.moltProgress);
  moltVisual.update(game.moltProgress,game.moltReady,game.molting||game.state==='won',p.x,p.y,p.z,bodyHeading,now/1000);
- if(!game.molting){const look=Math.atan2(aim.y-p.y,aim.x-p.x)-bodyHeading;(hero.userData.feelers as THREE.Group[]).forEach((f,i)=>f.rotation.z=THREE.MathUtils.clamp(Math.atan2(Math.sin(look),Math.cos(look)),-1.2,1.2)+Math.sin(now*.003+i)*.06);}
+ if(!game.molting){const look=Math.atan2(aim.v-game.faceV(),aim.u-game.faceU())-bodyHeading;(hero.userData.feelers as THREE.Group[]).forEach((f,i)=>f.rotation.z=THREE.MathUtils.clamp(Math.atan2(Math.sin(look),Math.cos(look)),-1.2,1.2)+Math.sin(now*.003+i)*.06);}
  population.textContent=`群れ ${game.siblings.filter(s=>s.alive).length+(game.state==='lost'?0:1)} / ${game.siblings.length+1} 匹（操作中を含む）`;
  soundButton.textContent=audio.muted?'音 OFF → ON':audio.status==='running'?'音 ON → OFF':'音を有効にする';soundStatus.textContent=audio.status==='unavailable'?'音声を開始できません。別ブラウザーでもお試しください。':audio.status==='suspended'?'音が停止中です。「音を有効にする」を押してください。':'';
  const populationNow=game.siblings.filter(s=>s.alive).length+(game.state==='lost'?0:1);if(populationNow<lastPopulation){lossNotice=3;lossCount=lastPopulation-populationNow;}lastPopulation=populationNow;lossNotice=Math.max(0,lossNotice-dt);

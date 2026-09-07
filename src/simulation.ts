@@ -85,7 +85,7 @@ export class Game {
     this.events(dt);
     this.follow(dt);
     if(!this.molting) {
-      this.move(dt,input); this.pickup(dt); this.rest(dt); this.reveal(input);
+      this.move(dt,input); this.pickup(dt); this.rest(dt); if(!this.climb)this.reveal(input);
       this.moltReady=this.hunger>=.85&&this.water>=.85&&this.health>.25&&!this.climb;
       this.hold=this.moltReady&&input.freeze?this.hold+dt:0;
       if(this.hold>=3){this.molting=true;this.moltProgress=0;this.hold=0;}
@@ -113,7 +113,7 @@ export class Game {
   }
 
   private move(dt:number,i:Input) {
-    if(Number.isFinite(i.aimX)&&Number.isFinite(i.aimY))this.player.angle=Math.atan2(i.aimY-this.player.y,i.aimX-this.player.x);
+    if(Number.isFinite(i.aimX)&&Number.isFinite(i.aimY))this.player.angle=Math.atan2(i.aimY-this.faceV(),i.aimX-this.faceU());
     const length=Math.hypot(i.x||0,i.y||0);
     if(i.freeze||length<.001){this.stamina=clamp(this.stamina+dt*.35);this.grab=0;return;}
     let speed=2.2*(.45+.55*Math.min(this.hunger,this.water))*(this.wall(this.player)?1.3:1)*(i.probe?.5:1);
@@ -141,9 +141,10 @@ export class Game {
   // 面の上は (面に沿う水平方向, 高さ) の2Dパラメータ空間。面へ押す入力が「登る」になる。
   private onFace(dt:number,ux:number,uy:number,speed:number) {
     const p=this.player,f=this.climb!,step=speed*dt;
-    const along=ux*-p.ny+uy*p.nx, up=-(ux*p.nx+uy*p.ny);
+    const tx=-p.ny,ty=p.nx;                                 // 面に沿う水平方向(単位ベクトル)
+    const along=ux*tx+uy*ty, up=-(ux*p.nx+uy*p.ny);
     p.z=clamp(p.z+up*step,0,f.top);
-    if(p.nx)p.y=clamp(p.y+along*step,f.lo,f.hi);else p.x=clamp(p.x+along*step,f.lo,f.hi);
+    if(p.nx)p.y=clamp(p.y+along*ty*step,f.lo,f.hi);else p.x=clamp(p.x+along*tx*step,f.lo,f.hi);
     if(p.z<=0&&up<0)this.release();
     else if(p.z>=f.top-1e-6&&f.top<WALL_TOP)this.mount();
   }
@@ -177,6 +178,11 @@ export class Game {
   }
   // (x,y) を支える面の高さ。天面から踏み外すとその場で下の面まで落ちる。
   private support(x:number,y:number){let h=0;for(const o of OBSTACLES)if(x>o.x&&x<o.x+o.w&&y>o.y&&y<o.y+o.h&&o.top>h)h=o.top;return h;}
+
+  // 接触面の 2D パラメータ空間。床/天面は (x,y)、壁は (面に沿う座標, 高さ)。
+  get face(){return this.climb;}
+  faceU(){const p=this.player;return this.climb?(p.nx?p.y*p.nx:p.x*-p.ny):p.x;}
+  faceV(){const p=this.player;return this.climb?p.z:p.y;}
 
   private go(p:Point,dx:number,dy:number,z=0) {
     // Substeps prevent tunnelling when tests or low frame rates supply larger dt.
