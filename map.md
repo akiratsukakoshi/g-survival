@@ -28,6 +28,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 | 脱皮演出 | `src/molt.ts` | — | 空き |
 | 音響 | `src/audio.ts` | — | 空き |
 | 検証スクリプト | `*.mjs`, `scripts/` | — | 空き |
+| Blender幼齢素材 | `C:\Users\tukap\blender-work\roach_codex.py`, `codex_v6/` | — | 空き |
 | ドキュメント | `*.md` | 共有(追記のみ) | — |
 
 > `src/main.ts` は1行1492文字の高密度コード。**同時編集は必ず衝突する。** オーナーを取らずに触らない。
@@ -41,9 +42,10 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 | # | 日付 | From→To | 状態 | 内容 |
 |---|---|---|---|---|
-| 005 | 2026-09-08 | Claude→Codex | OPEN | **斜俯瞰3Dリファクタ完了(`b473355`〜`af82692`、push済み)。次に触る前に必ず読んでください。** 構造が大きく変わっています。(1) 座標の読み替えは `src/space.ts` に集約。sim の `{x,y}` は「床の上の2Dパラメータ空間」で、world は `(x, 高さ, -y)`。**`simulation.ts` の変数名は `y` のままだが意味は「床を横切る方向」**です。(2) 世界は `WORLD{lo:1,hi:34}` の正方形。`OBSTACLES` に高さ `top` が付きました。(3) プレイヤーに `z`(高さ)と `(nx,ny)`(貼り付いている面の法線)があります。敵は登れません(ガクチョ判断で今後も不要)。(4) **`src/animals.ts` は一度も編集していません**。生物は `space.ts` の `grounded()`/`pose()` の台座で包んであるので、Blender 版(`loadAnimals()` / `orientation:Quaternion`)への差し替えはこの台座を差し替える形で入れられます。 |
+| 006 | 2026-09-08 | Codex→Claude | OPEN | 幼齢素材を `public/models/roach-nymph.glb` に配置。3,944 tris・単一頂点色マテリアル・27ボーン・Walk_Draft。造形/再生成元/検証は `assets/nymph-source/`、編集用blendは `C:\Users\tukap\blender-work\codex_v6/`。ゲーム本体は未接続。次の組込みでは既存space台座に合わせ、スキン個体はSkeletonUtils.cloneで複製すること。完了条件はガクチョの造形確認後にゲーム照明・壁姿勢・実機FPSと足滑りを検証すること。 |
+| 005 | 2026-09-08 | Claude→Codex | ANSWERED | **斜俯瞰3Dリファクタ完了(`b473355`〜`af82692`、push済み)。次に触る前に必ず読んでください。** 構造が大きく変わっています。(1) 座標の読み替えは `src/space.ts` に集約。sim の `{x,y}` は「床の上の2Dパラメータ空間」で、world は `(x, 高さ, -y)`。**`simulation.ts` の変数名は `y` のままだが意味は「床を横切る方向」**です。(2) 世界は `WORLD{lo:1,hi:34}` の正方形。`OBSTACLES` に高さ `top` が付きました。(3) プレイヤーに `z`(高さ)と `(nx,ny)`(貼り付いている面の法線)があります。敵は登れません(ガクチョ判断で今後も不要)。(4) **`src/animals.ts` は一度も編集していません**。生物は `space.ts` の `grounded()`/`pose()` の台座で包んであるので、Blender 版(`loadAnimals()` / `orientation:Quaternion`)への差し替えはこの台座を差し替える形で入れられます。 |
 | 004 | 2026-09-08 | Claude→Codex | CLOSED | 斜俯瞰3Dリファクタに着手した件。→ **フェーズ1〜4完了、フェーズ5は不要と決定。005 に引き継ぎ。** |
-| 001 | 2026-09-08 | Claude→Codex | OPEN | map.md / CLAUDE.md / AGENTS.md による共同運用を開始しました。Codex側は次回セッション開始時に AGENTS.md を読み、終了時に §6 セッションログへ追記してください。分界(§2)のオーナー取得もお願いします。 |
+| 001 | 2026-09-08 | Claude→Codex | ANSWERED | map.md / CLAUDE.md / AGENTS.md による共同運用を開始しました。Codex側は次回セッション開始時に AGENTS.md を読み、終了時に §6 セッションログへ追記してください。分界(§2)のオーナー取得もお願いします。 |
 | 003 | 2026-09-08 | Claude→ガクチョ | CLOSED | `git push origin main` が Claude 側の権限設定で拒否された件。→ **ガクチョが `.claude/settings.json` の deny から `Bash(git push:*)` を削除し、push 完了(`cd49511..366f11d`)。** force push は CLAUDE.md / AGENTS.md §4 の規約で禁止する運用とする。 |
 | 002 | 2026-09-08 | Claude→ガクチョ | ANSWERED | 改善の優先順位。→ **回答: まず実プレイ検証(E12)。テストモードを立ち上げ、ガクチョがプレイしてから指示を出す。** |
 
@@ -65,6 +67,10 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 | R01 | 斜俯瞰3Dリファクタ(`docs/isometric-refactor-brief.md`)。フェーズ1=カメラ / 2=世界をX-Z床面に再構築 / 3=壁登り / 4=暗闇 / 5=敵AIの3D経路 | ガクチョ指示書 | **フェーズ1〜4完了(2026-09-08)**。**フェーズ5(敵の壁登り)はガクチョ判断で不要**。指示書は完了 |
 | E16 | 正方形化+壁登り後の難易度をガクチョが実プレイで再判定 | E12 の再実施 | **完了(2026-09-08)**: 「ゲームバランスもちょうどいい」。FPS も終始60で安定。指摘は壁上の左右反転1件のみで、修正済み |
 | E12 | 初見プレイで5〜8分に収まるかの実測と調整 | 原仕様 §11 | **一部検証(2026-09-08)**: ガクチョが実プレイし「設計意図通りの難易度」と判定。難易度は現状維持で確定。**所要時間の実測値は未取得**のため、5〜8分の条件は引き続き未検証 |
+
+### 素材制作
+
+- A01 幼齢Blender素材: 修正版v6作成、GLB再読込検証完了。造形の最終判断・ゲーム組込み・歩行の接地調整・実機FPSは未完。新しい調整値はAI暫定値。
 
 ### P2 — 密度・手触り
 
@@ -115,6 +121,15 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 ---
 
 ## 6. セッションログ
+
+### 2026-09-08 / Codex / 幼齢Blender素材 v6
+
+- **変更**: 既存out5と参考写真2枚を比較。原版を残した別スクリプトで背板、白線、艶、触角の床貫通を修正。6腹節を維持。GLB・blend・四面図・仮歩行リグを作成。調整値はAI暫定値。
+- **変更ファイル**: `assets/nymph-source/`、`public/models/roach-nymph.glb`、`map.md`。編集用素材は `C:\Users\tukap\blender-work\codex_v6/`。
+- **ゲーム本体の変更**: なし。素材のみ配置、ロード処理は未接続。
+- **検証**: 3,944三角形、1プリミティブ、1マテリアル、27骨、COLOR_0/JOINTS_0、183,032 bytes。静止メッシュ最下点z=0。四面図目視確認。GLB再読込・歩行7フレーム再レンダー、頂点移動0.18424、ループ端誤差0。コピー先GLBのSHA256一致。WSL Node v23.7.0を指定した `bash scripts/verify.sh` 内のnpm run build / smoke 11群 / playthrough won 229.3秒 / browser-auditすべてPASS。初回はWindows npm混入とnode未検出で失敗、WSL PATH指定で解消。
+- **未完**: ガクチョの造形判断、実ゲーム照明、実機FPS、接地IK/足滑り調整。Walk_Draftは仮歩行。体長1は旧スクリプトの設計基準で、頭回転後の厳密端点測長ではない。恐怖感等の体験項目は判定していない。
+- **オーナー解放**: Blender素材の担当を解放。INBOX 001/005確認済み、006をClaudeへ追加。検証が更新した `artifacts/ants-after-molt-catch.png` / `artifacts/molt-middle.png` は今回の素材コミットには含めない。
 
 新しいセッションを**一番上**に追加する。テンプレは §7。
 

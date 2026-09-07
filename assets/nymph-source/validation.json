@@ -1,0 +1,15 @@
+{
+  "triangles": 3944,
+  "materials": 1,
+  "primitives": 1,
+  "bones": 27,
+  "animations": [
+    "Walk_Draft"
+  ],
+  "minimum_mesh_z": 0.0,
+  "body_length_convention": 1.0,
+  "glb_bytes": 183032,
+  "roundtrip_import": true,
+  "animation_vertex_motion": 0.18423977589210752,
+  "animation_loop_error": 0.0
+}
