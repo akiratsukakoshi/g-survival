@@ -17,6 +17,11 @@ export const OBSTACLES = [
   {x:5,y:28,w:4.5,h:3,top:.75}, {x:13,y:28,w:5,h:3,top:1.3}, {x:24,y:32,w:5,h:1.6,top:1},
 ];
 const clamp = (v:number,lo=0,hi=1) => Math.max(lo,Math.min(hi,v));
+// フェーズ3 壁登り。すべて AI暫定値(ガクチョ未指定)。
+const CLIMB_GRAB=.35;   // 面を押し続けて張り付くまでの秒数。予告なく貼り付かないための間
+const OFF=.16;          // 面から体を離しておく距離
+const ANT_REACH=.3;     // アリが届く高さ
+const SPIDER_REACH=1.35;// クモが届く高さ。仕切り壁の上(top 1.5)には届かない
 const distance = (a:Point,b:Point) => Math.hypot(a.x-b.x,a.y-b.y);
 const ANT_ROUTES:Point[][] = [
   [{x:8,y:15},{x:20,y:15},{x:20,y:16.2},{x:19,y:16.2},{x:19,y:15.4},{x:8,y:15.4}],
@@ -25,7 +30,8 @@ const ANT_ROUTES:Point[][] = [
 const SPIDER_ROUTES:Point[][] = [ [{x:8,y:13.2},{x:11,y:13.2}], [{x:22,y:30},{x:27,y:30}] ];
 
 export class Game {
-  player = {x:4,y:4,angle:0};
+  // z = 床からの高さ。(nx,ny) = 貼り付いている面の外向き法線。(0,0) なら水平面(床か塊の天面)。
+  player = {x:4,y:4,z:0,angle:0,nx:0,ny:0};
   siblings:Cockroach[] = [];
   spiders:Spider[] = [];
   ants:Ant[] = [];
@@ -44,6 +50,7 @@ export class Game {
   private paths:Point[][]=[];
   private nextWander:number[]=[];
   private hold=0; private immune=0; private rng=1234567;
+  private climb:{top:number;lo:number;hi:number}|null=null; private grab=0;
 
   constructor() {
     for(let n=0;n<11;n++) {
@@ -79,7 +86,7 @@ export class Game {
     this.follow(dt);
     if(!this.molting) {
       this.move(dt,input); this.pickup(dt); this.rest(dt); this.reveal(input);
-      this.moltReady=this.hunger>=.85&&this.water>=.85&&this.health>.25;
+      this.moltReady=this.hunger>=.85&&this.water>=.85&&this.health>.25&&!this.climb;
       this.hold=this.moltReady&&input.freeze?this.hold+dt:0;
       if(this.hold>=3){this.molting=true;this.moltProgress=0;this.hold=0;}
     }
@@ -108,20 +115,76 @@ export class Game {
   private move(dt:number,i:Input) {
     if(Number.isFinite(i.aimX)&&Number.isFinite(i.aimY))this.player.angle=Math.atan2(i.aimY-this.player.y,i.aimX-this.player.x);
     const length=Math.hypot(i.x||0,i.y||0);
-    if(i.freeze||length<.001){this.stamina=clamp(this.stamina+dt*.35);return;}
+    if(i.freeze||length<.001){this.stamina=clamp(this.stamina+dt*.35);this.grab=0;return;}
     let speed=2.2*(.45+.55*Math.min(this.hunger,this.water))*(this.wall(this.player)?1.3:1)*(i.probe?.5:1);
     if(i.sprint&&this.stamina>0){speed*=2.1;this.stamina=clamp(this.stamina-dt*.28);}
     else this.stamina=clamp(this.stamina+dt*.12);
-    this.go(this.player,i.x/length*speed*dt,i.y/length*speed*dt);
+    const ux=i.x/length,uy=i.y/length;
+    if(this.climb)this.onFace(dt,ux,uy,speed);else this.onGround(dt,ux,uy,speed);
   }
 
-  private go(p:Point,dx:number,dy:number) {
+  // 水平面(床・塊の天面)の移動。進もうとした向きで止められ続けたら面に張り付く。
+  private onGround(dt:number,ux:number,uy:number,speed:number) {
+    const p=this.player,step=speed*dt,fromX=p.x,fromY=p.y;
+    this.go(p,ux*step,uy*step,p.z);
+    const under=this.support(p.x,p.y);
+    if(under<p.z) {
+      // 天面から踏み外した。着地点が塊の判定帯(.18)に重なるので、進行方向へ少しだけ送り出す。
+      const ox=clamp(p.x+ux*.22,WORLD.lo,WORLD.hi),oy=clamp(p.y+uy*.22,WORLD.lo,WORLD.hi);
+      if(this.clear(ox,oy,under)){p.x=ox;p.y=oy;p.z=this.support(ox,oy);}
+      else{p.x=fromX;p.y=fromY;}
+    } else p.z=under;
+    if(Math.hypot(p.x-fromX,p.y-fromY)<step*.4){if((this.grab+=dt)>=CLIMB_GRAB)this.grip(ux,uy);}
+    else this.grab=0;
+  }
+
+  // 面の上は (面に沿う水平方向, 高さ) の2Dパラメータ空間。面へ押す入力が「登る」になる。
+  private onFace(dt:number,ux:number,uy:number,speed:number) {
+    const p=this.player,f=this.climb!,step=speed*dt;
+    const along=ux*-p.ny+uy*p.nx, up=-(ux*p.nx+uy*p.ny);
+    p.z=clamp(p.z+up*step,0,f.top);
+    if(p.nx)p.y=clamp(p.y+along*step,f.lo,f.hi);else p.x=clamp(p.x+along*step,f.lo,f.hi);
+    if(p.z<=0&&up<0)this.release();
+    else if(p.z>=f.top-1e-6&&f.top<WALL_TOP)this.mount();
+  }
+
+  // 押している向きにある面を探して張り付く。外周壁が先。
+  private grip(ux:number,uy:number) {
+    const p=this.player;
+    const edge=p.x<=WORLD.lo+.03&&ux<-.3?[1,0]:p.x>=WORLD.hi-.03&&ux>.3?[-1,0]:
+               p.y<=WORLD.lo+.03&&uy<-.3?[0,1]:p.y>=WORLD.hi-.03&&uy>.3?[0,-1]:null;
+    if(edge){p.nx=edge[0];p.ny=edge[1];this.climb={top:WALL_TOP,lo:WORLD.lo,hi:WORLD.hi};this.grab=0;return;}
+    const px=p.x+ux*.3,py=p.y+uy*.3;
+    const hit=OBSTACLES.find(o=>o.top>p.z+.02&&px>o.x-.18&&px<o.x+o.w+.18&&py>o.y-.18&&py<o.y+o.h+.18);
+    if(!hit)return;
+    const dx=p.x-clamp(p.x,hit.x,hit.x+hit.w),dy=p.y-clamp(p.y,hit.y,hit.y+hit.h);
+    if(!dx&&!dy)return;
+    if(Math.abs(dx)>=Math.abs(dy)){const s=dx>=0?1:-1;p.nx=s;p.ny=0;p.x=(s>0?hit.x+hit.w:hit.x)+s*OFF;this.climb={top:hit.top,lo:hit.y+.12,hi:hit.y+hit.h-.12};}
+    else{const s=dy>=0?1:-1;p.nx=0;p.ny=s;p.y=(s>0?hit.y+hit.h:hit.y)+s*OFF;this.climb={top:hit.top,lo:hit.x+.12,hi:hit.x+hit.w-.12};}
+    this.grab=0;
+  }
+
+  private release() {
+    const p=this.player;
+    p.x=clamp(p.x+p.nx*.12,WORLD.lo,WORLD.hi);p.y=clamp(p.y+p.ny*.12,WORLD.lo,WORLD.hi);
+    p.nx=0;p.ny=0;this.climb=null;this.grab=0;p.z=this.support(p.x,p.y);
+  }
+  // 登りきったら天面に乗る。落下ダメージ・スタミナ消費は指示書のとおり後回し。
+  private mount() {
+    const p=this.player,ix=p.x-p.nx*.3,iy=p.y-p.ny*.3;
+    p.nx=0;p.ny=0;this.climb=null;this.grab=0;
+    p.x=clamp(ix,WORLD.lo,WORLD.hi);p.y=clamp(iy,WORLD.lo,WORLD.hi);p.z=this.support(p.x,p.y);
+  }
+  // (x,y) を支える面の高さ。天面から踏み外すとその場で下の面まで落ちる。
+  private support(x:number,y:number){let h=0;for(const o of OBSTACLES)if(x>o.x&&x<o.x+o.w&&y>o.y&&y<o.y+o.h&&o.top>h)h=o.top;return h;}
+
+  private go(p:Point,dx:number,dy:number,z=0) {
     // Substeps prevent tunnelling when tests or low frame rates supply larger dt.
     const steps=Math.max(1,Math.ceil(Math.hypot(dx,dy)/.1));
     for(let n=0;n<steps;n++) {
       const x=clamp(p.x+dx/steps,WORLD.lo,WORLD.hi),y=clamp(p.y+dy/steps,WORLD.lo,WORLD.hi);
-      if(this.clear(x,p.y))p.x=x;
-      if(this.clear(p.x,y))p.y=y;
+      if(this.clear(x,p.y,z))p.x=x;
+      if(this.clear(p.x,y,z))p.y=y;
     }
   }
 
@@ -178,7 +241,7 @@ export class Game {
   private antsUpdate(dt:number) {
     this.ants.forEach((a,n)=>{
       if(a.target===null) {
-        if(this.immune<=0&&distance(a,this.player)<.48)a.target=-1;
+        if(this.immune<=0&&this.player.z<=ANT_REACH&&distance(a,this.player)<.48)a.target=-1;
         else {const index=this.siblings.findIndex(s=>s.alive&&distance(a,s)<.45);if(index>=0)a.target=index;}
       }
       const target=a.target===-1?this.player:a.target===null?undefined:this.siblings[a.target];
@@ -193,6 +256,7 @@ export class Game {
           for(const other of this.ants)if(other.target===null&&distance(other,a)<1.15)other.target=a.target;
         }
       } else a.target=null;
+      if(a.target===-1&&this.player.z>ANT_REACH)a.target=null;   // 登られたら見失う
       if(a.target===null) {
         const path=ANT_ROUTES[a.route],goal=path[a.waypoint];
         this.toward(a,goal,1.1,dt);
@@ -200,7 +264,7 @@ export class Game {
       }
       if(distance(old,a)>.001)a.angle=Math.atan2(a.y-old.y,a.x-old.x);
     });
-    const touching=this.immune<=0&&this.ants.some(a=>a.target===-1&&distance(a,this.player)<.6);
+    const touching=this.immune<=0&&this.player.z<=ANT_REACH&&this.ants.some(a=>a.target===-1&&distance(a,this.player)<.6);
     this.antAttack=clamp(this.antAttack+(touching?dt:-dt*2),0,3);
     if(this.antAttack>=3-1e-6)this.handoff();
     this.siblings.forEach((s,n)=>{
@@ -233,7 +297,7 @@ export class Game {
         this.go(s,Math.cos(s.angle)*12*dt,Math.sin(s.angle)*12*dt);
         const npc=this.siblings.find(q=>q.alive&&distance(q,s)<.55);
         let caught=false;
-        if(this.immune<=0&&distance(s,this.player)<.65){this.handoff();caught=true;}
+        if(this.immune<=0&&this.player.z<=SPIDER_REACH&&distance(s,this.player)<.65){this.handoff();caught=true;}
         else if(npc){npc.alive=false;caught=true;}
         if(caught||this.timers[n]>=.45||distance(before,s)<.001) {
           s.state='recover';s.warningProgress=0;this.timers[n]=0;
@@ -249,7 +313,7 @@ export class Game {
     const candidates:Point[]=[];
     const canSee=(p:Point,range:number)=>distance(s,p)<range&&this.los(s,p)&&Math.cos(Math.atan2(p.y-s.y,p.x-s.x)-s.angle)>.35;
     for(const q of this.siblings)if(q.alive&&canSee(q,4.8))candidates.push(q);
-    if(this.immune<=0) {
+    if(this.immune<=0&&this.player.z<=SPIDER_REACH) {
       const moving=!i.freeze&&Math.hypot(i.x,i.y)>.1;
       const exposure=this.wall(this.player)?.5:3;
       const range=2*exposure*(this.molting?5:i.freeze?.12:1);
@@ -260,6 +324,7 @@ export class Game {
   }
 
   private pickup(dt:number) {
+    if(this.player.z>.35)return;
     for(const r of this.resources)if(r.amount>0&&distance(r,this.player)<.7) {
       const missing=1-(r.type==='food'?this.hunger:this.water);
       const amount=Math.min(.18*dt,r.amount,missing);
@@ -268,6 +333,7 @@ export class Game {
     }
   }
   private rest(dt:number) {
+    if(this.player.z>.35)return;
     if(this.checkpoints.some(c=>distance(c,this.player)<.65)) {
       this.hunger=clamp(this.hunger+dt*.006);this.health=clamp(this.health+dt*.1);this.stamina=clamp(this.stamina+dt*.2);
     }
@@ -290,13 +356,13 @@ export class Game {
   }
   private handoff() {
     const alive=this.siblings.filter(s=>s.alive);
-    this.molting=false;this.moltReady=false;this.moltProgress=0;this.moltStage='idle';this.hold=0;this.antAttack=0;
+    this.molting=false;this.moltReady=false;this.moltProgress=0;this.moltStage='idle';this.hold=0;this.antAttack=0;this.grab=0;
     for(const ant of this.ants)if(ant.target===-1)ant.target=null;
     if(!alive.length){this.state='lost';return;}
     const next=alive[Math.floor(this.random()*alive.length)];
     const index=this.siblings.indexOf(next);next.alive=false;
     for(const ant of this.ants)if(ant.target===index)ant.target=null;
-    this.player.x=next.x;this.player.y=next.y;this.health=1;this.immune=1;
+    this.player.x=next.x;this.player.y=next.y;this.player.z=0;this.player.nx=0;this.player.ny=0;this.climb=null;this.grab=0;this.health=1;this.immune=1;
   }
   private wall(p:Point) {
     return p.x<WORLD.lo+.45||p.x>WORLD.hi-.45||p.y<WORLD.lo+.45||p.y>WORLD.hi-.45||OBSTACLES.some(o=>p.x>o.x-.45&&p.x<o.x+o.w+.45&&p.y>o.y-.45&&p.y<o.y+o.h+.45);
@@ -306,8 +372,8 @@ export class Game {
     for(let k=1;k<steps;k++)if(!this.clear(a.x+(b.x-a.x)*k/steps,a.y+(b.y-a.y)*k/steps))return false;
     return true;
   }
-  private clear(x:number,y:number) {
-    return !OBSTACLES.some(o=>x>o.x-.18&&x<o.x+o.w+.18&&y>o.y-.18&&y<o.y+o.h+.18);
+  private clear(x:number,y:number,z=0) {
+    return !OBSTACLES.some(o=>o.top>z+.02&&x>o.x-.18&&x<o.x+o.w+.18&&y>o.y-.18&&y<o.y+o.h+.18);
   }
   private random(){this.rng=this.rng*48271%2147483647;return this.rng/2147483647;}
 }

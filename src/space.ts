@@ -13,3 +13,14 @@ export const place=(o:THREE.Object3D,x:number,y:number,h=PLANE_H)=>o.position.se
 // animateAnimal が触る rotation.z(進行方向)がそのまま world Y 軸まわりの回頭になる。
 // → animals.ts を編集せずに済む。指示書の Quaternion 版に差し替わってもこの台座は残せる。
 export function grounded(g:THREE.Group){const w=new THREE.Group();w.rotation.x=-Math.PI/2;w.add(g);w.userData.inner=g;return w;}
+// フェーズ3: 接触面の法線から姿勢を決める(指示書 §2「ゴキブリの上下は常に接触面の法線」)。
+// (nx,ny) は sim 平面での外向き法線。(0,0) なら床/天面。台座の基底を組み替えるだけなので、
+// animateAnimal が触る rotation.z は「面に沿う向き→上向き」の回頭のまま使える。
+const poseM=new THREE.Matrix4(),poseUp=new THREE.Vector3(),poseFwd=new THREE.Vector3(),poseSide=new THREE.Vector3();
+export function pose(pin:THREE.Group,x:number,y:number,z:number,nx:number,ny:number){
+ const onFace=nx!==0||ny!==0;
+ if(onFace){poseUp.set(nx,0,-ny);poseFwd.set(-ny,0,-nx);}else{poseUp.set(0,1,0);poseFwd.set(1,0,0);}
+ poseSide.crossVectors(poseUp,poseFwd);
+ poseM.makeBasis(poseFwd,poseSide,poseUp);pin.quaternion.setFromRotationMatrix(poseM);
+ pin.position.set(x+nx*PLANE_H,z+(onFace?.05:PLANE_H),-(y+ny*PLANE_H));
+}

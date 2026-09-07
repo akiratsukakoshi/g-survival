@@ -5,7 +5,7 @@ import { AudioEngine } from './audio';
 import './style.css';
 import { MoltVisual } from './molt';
 import { createAnimal, animateAnimal } from './animals';
-import { PLANE_H, toWorld, place, grounded } from './space';
+import { PLANE_H, toWorld, place, grounded, pose } from './space';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `<canvas id="world"></canvas><canvas id="veil"></canvas><div class="vignette"></div><header><span class="mark">G-survival <small>— 隙間の生 —</small></span><span class="chapter">CHAPTER 01 / 屋根裏</span></header><div id="entry"><div class="eyebrow">A LIFE BENEATH OUR FEET</div><h1>G-survival</h1><h2>— 隙間の生 —</h2><p class="story">あなたは、孵化したばかりのクロゴキブリの幼虫。<br>まだ飛べない。闇の中を、触角と気流を頼りに生きる。</p><p class="goal"><b>第1章：最初の脱皮</b><br>餌と水を探し、安全な隙間へ。<br>満たされた体で Space を3秒押し、20秒間の脱皮を生き延びる。<br>死ねば、どこかで生きている仲間へ。群れの命も、残りわずか。</p><button id="begin">卵から孵る <span>↗</span></button><small>音のある環境で体験してください</small></div><div id="ending" hidden><div class="eyebrow">CHAPTER 01</div><h2></h2><p></p><button id="again">もう一度、孵る ↗</button></div><aside id="hud"><div id="population" aria-live="polite"></div><div id="survival"><label>体力 <meter id="health" min="0" max="1"></meter></label><label>栄養 <meter id="hunger" min="0" max="1"></meter></label><label>水分 <meter id="water" min="0" max="1"></meter></label></div><div id="objective"></div><div id="molt-req"></div><div class="sound-controls"><button id="sound">音を有効にする</button><button id="test-sound">音を確認</button></div><label class="volume">音量 <input id="volume" aria-label="音量" type="range" min="0" max="1" step="0.05" value="0.8"></label><div id="sound-status" role="status"></div></aside><div id="controls">WASD / 矢印：壁を這う　·　Shift：走る　·　Space：静止　·　左長押し：探る</div><div id="warning" role="status"></div><footer><span>PERIPLANETA FULIGINOSA</span><span>01 — FIRST INSTAR</span></footer>`;
@@ -80,7 +80,7 @@ const keys=new Set<string>();let mouse={x:innerWidth*.65,y:innerHeight*.5},probe
 addEventListener('keydown',e=>{if(['Space','KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight'].includes(e.code))e.preventDefault();keys.add(e.code);});addEventListener('keyup',e=>keys.delete(e.code));
 addEventListener('blur',()=>{keys.clear();probe=false;});addEventListener('pointermove',e=>{mouse={x:e.clientX,y:e.clientY};});addEventListener('pointerdown',e=>{if(e.button===0&&!(e.target as HTMLElement).closest('button,input'))probe=true;});addEventListener('pointerup',()=>probe=false);
 function resize(){renderer.setSize(innerWidth,innerHeight);veil.width=innerWidth;veil.height=innerHeight;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}addEventListener('resize',resize);resize();
-function project(x:number,y:number){const v=toWorld(x,y).project(camera);return{x:(v.x*.5+.5)*innerWidth,y:(-.5*v.y+.5)*innerHeight};}
+function project(x:number,y:number,h=PLANE_H){const v=toWorld(x,y,h).project(camera);return{x:(v.x*.5+.5)*innerWidth,y:(-.5*v.y+.5)*innerHeight};}
 let aim={x:5,y:1};const remembered=new Set<number>();
 function reach(x:number,y:number,dx:number,dy:number,max:number){for(let t=.12;t<max;t+=.12){const px=x+dx*t,py=y+dy*t;if(OBSTACLES.some(o=>px>o.x&&px<o.x+o.w&&py>o.y&&py<o.y+o.h))return t;}return max;}
 function sense(){return .4+.6*Math.min(game.hunger,game.water);}
@@ -89,21 +89,22 @@ function visible(x:number,y:number){const dx=x-game.player.x,dy=y-game.player.y,
 const VEIL_ALPHA=.88,NEAR_SPAN=1.25,NEAR_MID=.97,FAN_CORE=.97,FAN_MID=.8;
 function darkness(){
  ctx.clearRect(0,0,veil.width,veil.height);ctx.fillStyle=`rgba(3,5,7,${VEIL_ALPHA})`;ctx.fillRect(0,0,veil.width,veil.height);
- const p=project(game.player.x,game.player.y),pu=project(game.player.x+1,game.player.y),scale=Math.hypot(pu.x-p.x,pu.y-p.y),radius=scale*.9*NEAR_SPAN*sense();
+ const ph=PLANE_H+game.player.z;
+ const p=project(game.player.x,game.player.y,ph),pu=project(game.player.x+1,game.player.y,ph),scale=Math.hypot(pu.x-p.x,pu.y-p.y),radius=scale*.9*NEAR_SPAN*sense();
  ctx.globalCompositeOperation='destination-out';const near=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,radius);near.addColorStop(0,'rgba(0,0,0,1)');near.addColorStop(.55,`rgba(0,0,0,${NEAR_MID})`);near.addColorStop(1,'transparent');ctx.fillStyle=near;ctx.fillRect(p.x-radius,p.y-radius,2*radius,2*radius);
  const angle=Math.atan2(aim.y-game.player.y,aim.x-game.player.x),range=(probe?4:2.4)*sense(),spread=probe?.87:.52;
  const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,range*scale);g.addColorStop(0,`rgba(0,0,0,${FAN_CORE})`);g.addColorStop(.7,`rgba(0,0,0,${FAN_MID})`);g.addColorStop(1,'transparent');ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(p.x,p.y);for(let i=0;i<=50;i++){const a=angle-spread+spread*2*i/50;const r=reach(game.player.x,game.player.y,Math.cos(a),Math.sin(a),range);const q=project(game.player.x+Math.cos(a)*r,game.player.y+Math.sin(a)*r);ctx.lineTo(q.x,q.y);}ctx.closePath();ctx.fill();ctx.globalCompositeOperation='source-over';
- OBSTACLES.forEach((o,i)=>{if([[o.x-.1,o.y],[o.x+o.w+.1,o.y],[o.x,o.y+o.h+.1],[o.x+o.w/2,o.y-.1]].some(([x,y])=>visible(x,y)))remembered.add(i);if(remembered.has(i)){const q=[[o.x,o.y],[o.x+o.w,o.y],[o.x+o.w,o.y+o.h],[o.x,o.y+o.h]].map(([x,y])=>project(x,y));ctx.strokeStyle='rgba(157,164,149,.23)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(q[0].x,q[0].y);for(let k=1;k<4;k++)ctx.lineTo(q[k].x,q[k].y);ctx.closePath();ctx.stroke();}});
+ OBSTACLES.forEach((o,i)=>{if([[o.x-.1,o.y],[o.x+o.w+.1,o.y],[o.x,o.y+o.h+.1],[o.x+o.w/2,o.y-.1]].some(([x,y])=>visible(x,y)))remembered.add(i);if(remembered.has(i)){const q=[[o.x,o.y],[o.x+o.w,o.y],[o.x+o.w,o.y+o.h],[o.x,o.y+o.h]].map(([x,y])=>project(x,y,o.top));ctx.strokeStyle='rgba(157,164,149,.23)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(q[0].x,q[0].y);for(let k=1;k<4;k++)ctx.lineTo(q[k].x,q[k].y);ctx.closePath();ctx.stroke();}});
  checkpointModels.forEach((m,i)=>{const c=game.checkpoints[i];if(visible(c.x,c.y)){const q=project(c.x,c.y);ctx.strokeStyle='rgba(195,181,123,.5)';ctx.beginPath();ctx.arc(q.x,q.y,14,0,Math.PI*2);ctx.stroke();}});
  const d=game.danger.strength;if(d>0){const t=project(game.danger.x,game.danger.y);const a=Math.atan2(t.y-p.y,t.x-p.x);const k=Math.min(innerWidth/2/Math.max(.01,Math.abs(Math.cos(a))),innerHeight/2/Math.max(.01,Math.abs(Math.sin(a))));const x=innerWidth/2+Math.cos(a)*k,y=innerHeight/2+Math.sin(a)*k;const glow=ctx.createRadialGradient(x,y,0,x,y,170);glow.addColorStop(0,`rgba(184,201,209,${Math.min(.6,d*.6)})`);glow.addColorStop(1,'transparent');ctx.fillStyle=glow;ctx.fillRect(0,0,innerWidth,innerHeight);}
  if(game.humanEvent>0){const humanGlow=ctx.createLinearGradient(0,0,0,innerHeight*.4);humanGlow.addColorStop(0,`rgba(207,215,218,${Math.min(.7,game.humanEvent*.6)})`);humanGlow.addColorStop(1,'transparent');ctx.fillStyle=humanGlow;ctx.fillRect(0,0,innerWidth,innerHeight*.4);}
  if(game.antAttack>0){ctx.strokeStyle=`rgba(187,91,63,${.2+game.antAttack/5})`;ctx.lineWidth=8;ctx.strokeRect(4,4,innerWidth-8,innerHeight-8);}
 }document.querySelector('#begin')!.addEventListener('click',()=>{started=true;hatchTime=0;hatchStarted=performance.now();document.querySelector('#entry')!.classList.add('gone');void audio.start();probe=false;});
-document.querySelector('#again')!.addEventListener('click',()=>{moltVisual.reset();game=new Game();hatchTime=0;hatchStarted=performance.now();remembered.clear();rebuildPickups();ended=false;document.querySelector<HTMLElement>('#ending')!.hidden=true;keys.clear();lastPopulation=game.siblings.length+1;lossNotice=0;lastX=game.player.x;lastY=game.player.y;});
+document.querySelector('#again')!.addEventListener('click',()=>{moltVisual.reset();game=new Game();hatchTime=0;hatchStarted=performance.now();remembered.clear();rebuildPickups();ended=false;document.querySelector<HTMLElement>('#ending')!.hidden=true;keys.clear();lastPopulation=game.siblings.length+1;lossNotice=0;lastX=game.player.x;lastY=game.player.y;lastZ=0;});
 const population=document.querySelector<HTMLElement>('#population')!,soundButton=document.querySelector<HTMLButtonElement>('#sound')!,soundStatus=document.querySelector<HTMLElement>('#sound-status')!,warningLabel=document.querySelector<HTMLElement>('#warning')!;
 document.querySelector('#test-sound')!.addEventListener('click',e=>{void audio.test();(e.currentTarget as HTMLButtonElement).blur();});soundButton.addEventListener('click',()=>{void audio.toggle();soundButton.blur();});
 document.querySelector<HTMLInputElement>('#volume')!.addEventListener('input',e=>audio.setVolume(Number((e.target as HTMLInputElement).value)));
-let lastX=game.player.x,lastY=game.player.y,bodyHeading=0,lastPopulation=game.siblings.length+1;
+let lastX=game.player.x,lastY=game.player.y,lastZ=0,bodyHeading=0,lastPopulation=game.siblings.length+1;
 let lossNotice=0,lossCount=0;
 const objective=document.querySelector<HTMLElement>('#objective')!;
 const moltReq=document.querySelector<HTMLElement>('#molt-req')!;let lastReqHtml='';
@@ -113,13 +114,18 @@ let previous=performance.now(),accumulator=0;function frame(now:number){requestA
  const p=game.player;const damp=Math.min(1,dt*CAM_LERP);
  // 蛇行するので先読みは +X 固定ではなく、実際に進んでいる向きへ。ゆっくり効かせないと酔う。
  lead.x+=((travelling?Math.cos(bodyHeading)*CAM_LEAD:0)-lead.x)*Math.min(1,dt*.9);lead.y+=((travelling?Math.sin(bodyHeading)*CAM_LEAD:0)-lead.y)*Math.min(1,dt*.9);
- camTarget.x+=((started?p.x+lead.x:4)-camTarget.x)*damp;camTarget.z+=(-(started?p.y+lead.y:4)-camTarget.z)*damp;camTarget.y=CAM_HEIGHT+Math.sin(now*.055)*game.humanEvent*.08;placeCamera();camera.updateMatrixWorld();
+ camTarget.x+=((started?p.x+lead.x:4)-camTarget.x)*damp;camTarget.z+=(-(started?p.y+lead.y:4)-camTarget.z)*damp;camTarget.y+=(CAM_HEIGHT+p.z*.55-camTarget.y)*damp;camTarget.y+=Math.sin(now*.055)*game.humanEvent*.08;placeCamera();camera.updateMatrixWorld();
  aimNdc.set(mouse.x/innerWidth*2-1,1-mouse.y/innerHeight*2);aimRay.setFromCamera(aimNdc,camera);if(aimRay.ray.intersectPlane(aimPlane,aimHit))aim={x:aimHit.x,y:-aimHit.z};
  const input={x:Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft')),y:Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown')),sprint:keys.has('ShiftLeft')||keys.has('ShiftRight'),freeze:keys.has('Space'),probe,aimX:aim.x,aimY:aim.y};
  if(started&&!ended&&hatchTime>=4&&Math.hypot(camTarget.x-p.x,camTarget.z+p.y)<CAM_CATCHUP){accumulator+=dt;while(accumulator>=1/60){game.update(1/60,input);accumulator-=1/60;}}
- const travel=Math.hypot(p.x-lastX,p.y-lastY);if(travel>.001)bodyHeading=Math.atan2(p.y-lastY,p.x-lastX);travelling=travel>.004;lastX=p.x;lastY=p.y;
- const oldHatch=hatchTime;if(started)hatchTime=Math.min(4,(now-hatchStarted)/1000);if(oldHatch<4&&hatchTime>=4){game.siblings.forEach((s,i)=>{s.x=4+Math.cos(i*2.4)*2.2;s.y=4+Math.sin(i*2.4)*2.2;});}eggLeft.position.x=4-Math.min(1,hatchTime/3)*.4;eggRight.position.x=4+Math.min(1,hatchTime/3)*.4;eggLeft.rotation.y=-hatchTime*.08;eggRight.rotation.y=hatchTime*.08;heroPin.visible=started;place(heroPin,p.x,p.y);animateAnimal(hero,now/1000,travel/Math.max(dt,.001),bodyHeading,game.moltProgress);
- moltVisual.update(game.moltProgress,game.moltReady,game.molting||game.state==='won',p.x,p.y,bodyHeading,now/1000);
+ const dxs=p.x-lastX,dys=p.y-lastY,dzs=p.z-lastZ;
+ // 面に貼り付いている間は (面に沿う水平方向, 高さ) が進行方向。張り付き/離脱の座標跳びは travel から除く。
+ const onFace=p.nx!==0||p.ny!==0;
+ const ax=onFace?dxs*-p.ny+dys*p.nx:dxs,ay=onFace?dzs:dys;
+ let travel=Math.hypot(ax,ay);if(travel>.001&&travel<.6)bodyHeading=Math.atan2(ay,ax);travel=Math.min(travel,.6);
+ travelling=travel>.004;lastX=p.x;lastY=p.y;lastZ=p.z;
+ const oldHatch=hatchTime;if(started)hatchTime=Math.min(4,(now-hatchStarted)/1000);if(oldHatch<4&&hatchTime>=4){game.siblings.forEach((s,i)=>{s.x=4+Math.cos(i*2.4)*2.2;s.y=4+Math.sin(i*2.4)*2.2;});}eggLeft.position.x=4-Math.min(1,hatchTime/3)*.4;eggRight.position.x=4+Math.min(1,hatchTime/3)*.4;eggLeft.rotation.y=-hatchTime*.08;eggRight.rotation.y=hatchTime*.08;heroPin.visible=started;pose(heroPin,p.x,p.y,p.z,p.nx,p.ny);animateAnimal(hero,now/1000,travel/Math.max(dt,.001),bodyHeading,game.moltProgress);
+ moltVisual.update(game.moltProgress,game.moltReady,game.molting||game.state==='won',p.x,p.y,p.z,bodyHeading,now/1000);
  if(!game.molting){const look=Math.atan2(aim.y-p.y,aim.x-p.x)-bodyHeading;(hero.userData.feelers as THREE.Group[]).forEach((f,i)=>f.rotation.z=THREE.MathUtils.clamp(Math.atan2(Math.sin(look),Math.cos(look)),-1.2,1.2)+Math.sin(now*.003+i)*.06);}
  population.textContent=`群れ ${game.siblings.filter(s=>s.alive).length+(game.state==='lost'?0:1)} / ${game.siblings.length+1} 匹（操作中を含む）`;
  soundButton.textContent=audio.muted?'音 OFF → ON':audio.status==='running'?'音 ON → OFF':'音を有効にする';soundStatus.textContent=audio.status==='unavailable'?'音声を開始できません。別ブラウザーでもお試しください。':audio.status==='suspended'?'音が停止中です。「音を有効にする」を押してください。':'';
@@ -137,7 +143,7 @@ let previous=performance.now(),accumulator=0;function frame(now:number){requestA
   crumbs.forEach((m,i)=>{const a=game.ants[i];m.visible=!!a&&a.carrying&&a.target===null&&visible(a.x,a.y);if(a)place(m,a.x+Math.cos(a.angle)*.13,a.y+Math.sin(a.angle)*.13,.16);});
  checkpointModels.forEach((m,i)=>{const c=game.checkpoints[i];m.visible=visible(c.x,c.y);});
  const positions=dustGeometry.getAttribute('position') as THREE.BufferAttribute;for(let i=0;i<positions.count;i++){positions.setY(i,(positions.getY(i)-dt*(.015+game.humanEvent*.5)+3.4)%3.4);}positions.needsUpdate=true;
- warm.position.set(p.x,1.5,-p.y);warm.intensity=game.moltProgress>0?32:12;
+ warm.position.set(p.x,1.5+p.z,-p.y);warm.intensity=game.moltProgress>0?32:12;
  moon.position.set(p.x+10,14,-p.y+7);moon.target.position.set(p.x,0,-p.y);moon.target.updateMatrixWorld();
  audio.update(dt,{speed:started&&!ended?travel/Math.max(dt,.001):0,danger:game.danger.strength,pan:Math.sign(game.danger.x-p.x),molting:game.molting,stamina:game.stamina,human:game.humanEvent,ants:game.antAttack,vertical:(game.danger.y-p.y),loss:lossNotice>2.9});
  renderer.render(scene,camera);darkness();
