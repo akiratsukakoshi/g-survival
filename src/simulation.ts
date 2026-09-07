@@ -3,25 +3,34 @@ type Point = { x:number; y:number };
 type Cockroach = Point & { alive:boolean };
 export type Spider = Point & { angle:number; state:'patrol'|'warning'|'attack'|'recover'; targetX?:number; targetY?:number; warningProgress:number };
 export type Ant = Point & { angle:number; carrying:boolean; target:number|null; route:number; waypoint:number };
+// 屋根裏は 1..34 の正方形。{x,y,w,h} は床の footprint、`top` は高さ(フェーズ3で登る)。
+// 経路長は仕切り壁3枚の蛇行で、旧 100x7 の一本道(118)に対し 125.5 に収めてある。
+export const WORLD = {lo:1, hi:34};
+export const WALL_TOP = 3.2;                                  // 外周壁の高さ。AI暫定値
 export const OBSTACLES = [
-  {x:9,y:2,w:7,h:6}, {x:22,y:1,w:6,h:4.8}, {x:35,y:3.2,w:4,h:4.8},
-  {x:46,y:1,w:5,h:4.3}, {x:67,y:3.5,w:7,h:4.5}, {x:82,y:1,w:6,h:5.2}, {x:93,y:3.2,w:3,h:4.8},
+  // 仕切り壁。切れ目を互い違いに置いて蛇行させる。越えれば近道、迂回すれば安全。
+  {x:1,y:9,w:25,h:1.3,top:1.5}, {x:8,y:17,w:26,h:1.3,top:1.5}, {x:1,y:25,w:23,h:1.3,top:1.5},
+  // 家財・落とし物。高さはプレイヤーが隠れない範囲(AI暫定値)。
+  {x:7,y:2.5,w:4,h:3,top:.9}, {x:15,y:1.5,w:3.5,h:4,top:1.15}, {x:22,y:5,w:5,h:3,top:.75},
+  {x:12,y:11,w:5.5,h:3,top:1.3}, {x:22,y:13,w:4.5,h:3.5,top:1}, {x:2,y:13.5,w:4,h:2.5,top:.85},
+  {x:10,y:19,w:5,h:3.5,top:1.2}, {x:19,y:21,w:5.5,h:3,top:.9}, {x:28,y:19,w:4,h:4,top:1.15},
+  {x:5,y:28,w:4.5,h:3,top:.75}, {x:13,y:28,w:5,h:3,top:1.3}, {x:24,y:32,w:5,h:1.6,top:1},
 ];
 const clamp = (v:number,lo=0,hi=1) => Math.max(lo,Math.min(hi,v));
 const distance = (a:Point,b:Point) => Math.hypot(a.x-b.x,a.y-b.y);
 const ANT_ROUTES:Point[][] = [
-  [{x:20,y:6.3},{x:30,y:6.3},{x:30,y:2.6},{x:29,y:2.6},{x:29,y:6.7},{x:20,y:6.7}],
-  [{x:64,y:2.8},{x:76,y:2.8},{x:80,y:2.8},{x:80,y:3.2},{x:64,y:3.2}],
+  [{x:8,y:15},{x:20,y:15},{x:20,y:16.2},{x:19,y:16.2},{x:19,y:15.4},{x:8,y:15.4}],
+  [{x:10,y:27},{x:27,y:27},{x:31,y:27},{x:31,y:27.6},{x:10,y:27.6}],
 ];
-const SPIDER_ROUTES:Point[][] = [ [{x:29,y:2.5},{x:33,y:2.5}], [{x:75,y:2.8},{x:81,y:2.8}] ];
+const SPIDER_ROUTES:Point[][] = [ [{x:8,y:13.2},{x:11,y:13.2}], [{x:22,y:30},{x:27,y:30}] ];
 
 export class Game {
-  player = {x:4,y:1,angle:0};
+  player = {x:4,y:4,angle:0};
   siblings:Cockroach[] = [];
   spiders:Spider[] = [];
   ants:Ant[] = [];
   resources:{x:number;y:number;type:'food'|'water';amount:number}[] = [];
-  checkpoints = [{x:14,y:1},{x:54,y:6},{x:91,y:6}];
+  checkpoints = [{x:13,y:7},{x:7,y:14},{x:32,y:32}];
   state:'playing'|'won'|'lost' = 'playing';
   health=1; hunger=.55; water=.5; stamina=1; antAttack=0;
   moltReady=false; molting=false; moltStage='idle'; moltProgress=0;
@@ -38,19 +47,20 @@ export class Game {
 
   constructor() {
     for(let n=0;n<11;n++) {
-      this.siblings.push({x:4+Math.cos(n*2.6)*.5,y:1,alive:true});
+      this.siblings.push({x:4+Math.cos(n*2.6)*.5,y:4,alive:true});
       this.swarmTimers.push(0); this.paths.push([]); this.nextWander.push(n*.4);
     }
-    this.spiders=[{x:31,y:2.5,angle:Math.PI,state:'patrol',warningProgress:0},{x:78,y:2.8,angle:0,state:'patrol',warningProgress:0}];
+    this.spiders=[{x:9.5,y:13.2,angle:Math.PI,state:'patrol',warningProgress:0},{x:25,y:30,angle:0,state:'patrol',warningProgress:0}];
+    // 順番は蛇行の経路順。量と役割は旧レイアウトと同一(序盤7個は維持用、末尾2個が脱皮の蓄え)。
     this.resources=[
-      {x:17,y:1,type:'food',amount:.12},{x:19,y:1,type:'water',amount:.16},
-      {x:30,y:2.6,type:'food',amount:.18},{x:42,y:6,type:'water',amount:.2},
-      {x:57,y:6,type:'food',amount:.16},{x:61,y:6,type:'food',amount:.18},
-      {x:63,y:6,type:'water',amount:.08},{x:76,y:2.8,type:'food',amount:4},{x:78,y:6,type:'water',amount:4},
+      {x:12,y:7,type:'food',amount:.12},{x:20,y:3,type:'water',amount:.16},
+      {x:29,y:7,type:'food',amount:.18},{x:19,y:12,type:'food',amount:.16},
+      {x:8,y:15.5,type:'water',amount:.2},{x:6,y:20,type:'food',amount:.18},
+      {x:26,y:24,type:'water',amount:.08},{x:24,y:30,type:'food',amount:4},{x:31,y:31,type:'water',amount:4},
     ];
     for(let n=0;n<28;n++) {
       const route=n<16?0:1, k=n<16?n:n-16;
-      this.ants.push({x:(route?64:20)+k*.43,y:route?2.8:6.3,angle:0,carrying:n%4===0,target:null,route,waypoint:1});
+      this.ants.push({x:(route?10:8)+k*.43,y:route?27:15,angle:0,carrying:n%4===0,target:null,route,waypoint:1});
       this.antLost.push(0);
     }
   }
@@ -87,9 +97,9 @@ export class Game {
 
   private events(dt:number) {
     this.humanEvent=Math.max(0,this.humanEvent-dt);
-    [40,75].forEach((x,n)=>{
+    [12,27].forEach((y,n)=>{                                  // 旧レイアウトの x=40/75 に相当する進み具合
       const bit=1<<n;
-      if(this.player.x>=x&&!(this.humanEventsTriggered&bit)) {
+      if(this.player.y>=y&&!(this.humanEventsTriggered&bit)) {
         this.humanEventsTriggered|=bit;this.humanEvent=1.2;
       }
     });
@@ -109,7 +119,7 @@ export class Game {
     // Substeps prevent tunnelling when tests or low frame rates supply larger dt.
     const steps=Math.max(1,Math.ceil(Math.hypot(dx,dy)/.1));
     for(let n=0;n<steps;n++) {
-      const x=clamp(p.x+dx/steps,0,100),y=clamp(p.y+dy/steps,1,8);
+      const x=clamp(p.x+dx/steps,WORLD.lo,WORLD.hi),y=clamp(p.y+dy/steps,WORLD.lo,WORLD.hi);
       if(this.clear(x,p.y))p.x=x;
       if(this.clear(p.x,y))p.y=y;
     }
@@ -128,10 +138,11 @@ export class Game {
         let goal:Point;
         if(gather)goal={x:gather.x+Math.cos(n*2.4)*.35,y:Math.max(1,gather.y+Math.sin(n*2.4)*.3)};
         else {
-          goal={x:clamp(this.player.x+(n-5)*3+Math.sin(this.time*.15+n)*4,2,98),y:1+((n*1.7+this.time*.09)%7)};
+          const spin=n*2.1+this.time*.13,span=4+(n%4)*2.4;   // 旧レイアウトは通路方向に ±15 で散っていた。密集させるとアリ列に全員で突っ込む
+          goal={x:clamp(this.player.x+Math.cos(spin)*span,WORLD.lo+.5,WORLD.hi-.5),y:clamp(this.player.y+Math.sin(spin)*span,WORLD.lo+.5,WORLD.hi-.5)};
           if(!this.clear(goal.x,goal.y)) {
-            const candidates=[1.3,2.7,6.5,7.7].filter(y=>this.clear(goal.x,y));
-            goal.y=candidates[n%candidates.length]??1;
+            const ring=Array.from({length:8},(_,k)=>({x:clamp(this.player.x+Math.cos(k*.785)*1.8,WORLD.lo+.5,WORLD.hi-.5),y:clamp(this.player.y+Math.sin(k*.785)*1.8,WORLD.lo+.5,WORLD.hi-.5)})).filter(q=>this.clear(q.x,q.y));
+            goal=ring[n%Math.max(1,ring.length)]??{x:this.player.x,y:this.player.y};
           }
         }
         this.paths[n]=this.route(s,goal);
@@ -147,20 +158,20 @@ export class Game {
 
   // Small grid paths let siblings gather around solid beams without teleporting.
   private route(from:Point,to:Point):Point[] {
-    const nx=201,ny=15,cell=(p:Point)=>Math.round((p.y-1)*2)*nx+Math.round(p.x*2);
+    const nx=67,ny=67,cell=(p:Point)=>Math.round((p.y-WORLD.lo)*2)*nx+Math.round((p.x-WORLD.lo)*2);
     const start=cell(from),end=cell(to),queue=[start],previous=new Map<number,number>([[start,-1]]);
     for(let head=0;head<queue.length;head++) {
       const k=queue[head];if(k===end)break;
       const x=k%nx,y=Math.floor(k/nx);
       for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
         const xx=x+dx,yy=y+dy,key=yy*nx+xx;
-        if(xx<0||xx>=nx||yy<0||yy>=ny||previous.has(key)||!this.clear(xx/2,1+yy/2))continue;
+        if(xx<0||xx>=nx||yy<0||yy>=ny||previous.has(key)||!this.clear(WORLD.lo+xx/2,WORLD.lo+yy/2))continue;
         previous.set(key,k);queue.push(key);
       }
     }
     if(!previous.has(end))return [];
     const points:Point[]=[];
-    for(let k=end;k!==start;k=previous.get(k)!)points.push({x:(k%nx)/2,y:1+Math.floor(k/nx)/2});
+    for(let k=end;k!==start;k=previous.get(k)!)points.push({x:WORLD.lo+(k%nx)/2,y:WORLD.lo+Math.floor(k/nx)/2});
     return points.reverse();
   }
 
@@ -263,7 +274,7 @@ export class Game {
   }
   private reveal(i:Input) {
     const sense=.4+.6*Math.min(this.hunger,this.water),range=(i.probe?4:2.4)*sense,spread=i.probe?.87:.52;
-    for(let x=Math.floor(this.player.x-range);x<=Math.ceil(this.player.x+range);x++)for(let y=1;y<=8;y++) {
+    for(let x=Math.floor(this.player.x-range);x<=Math.ceil(this.player.x+range);x++)for(let y=Math.floor(this.player.y-range);y<=Math.ceil(this.player.y+range);y++) {
       const p={x:x+.5,y},angle=Math.atan2(y-this.player.y,p.x-this.player.x)-this.player.angle;
       if(distance(p,this.player)<range&&Math.abs(Math.atan2(Math.sin(angle),Math.cos(angle)))<spread&&this.los(this.player,p))this.explored.add(x+','+y);
     }
@@ -288,7 +299,7 @@ export class Game {
     this.player.x=next.x;this.player.y=next.y;this.health=1;this.immune=1;
   }
   private wall(p:Point) {
-    return p.x<.45||p.x>99.55||p.y<1.45||p.y>7.55||OBSTACLES.some(o=>p.x>o.x-.45&&p.x<o.x+o.w+.45&&p.y>o.y-.45&&p.y<o.y+o.h+.45);
+    return p.x<WORLD.lo+.45||p.x>WORLD.hi-.45||p.y<WORLD.lo+.45||p.y>WORLD.hi-.45||OBSTACLES.some(o=>p.x>o.x-.45&&p.x<o.x+o.w+.45&&p.y>o.y-.45&&p.y<o.y+o.h+.45);
   }
   private los(a:Point,b:Point) {
     const steps=Math.max(2,Math.ceil(distance(a,b)/.15));

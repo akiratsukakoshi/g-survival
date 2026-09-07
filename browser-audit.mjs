@@ -22,8 +22,8 @@ async function freshScene() {
 async function prepareMolt(page) {
   await page.evaluate(() => {
     const game = window.gameTest.state;
-    game.player.x = 14;
-    game.player.y = 1;
+    game.player.x = 13;
+    game.player.y = 7;
     game.hunger = 1;
     game.water = 1;
   });
@@ -83,12 +83,12 @@ try {
   const eventPage = await freshScene();
   await eventPage.evaluate(() => {
     const game = window.gameTest.state;
-    game.player.x = 40;
-    game.player.y = 1;
+    game.player.x = 20;
+    game.player.y = 12;
   });
   await eventPage.waitForFunction(() => window.gameTest.state.humanEvent > 0.8, null, { timeout: 6000 });
   const eventPeak = await eventPage.evaluate(() => window.gameTest.state.humanEvent);
-  await eventPage.evaluate(() => { window.gameTest.state.player.x = 38; });
+  await eventPage.evaluate(() => { window.gameTest.state.player.y = 11; });
   await eventPage.waitForTimeout(700);
   const eventAfter = await eventPage.evaluate(() => window.gameTest.state.humanEvent);
   expect(eventAfter >= 0 && eventAfter < eventPeak, `human event did not decay: ${eventPeak} -> ${eventAfter}`);
