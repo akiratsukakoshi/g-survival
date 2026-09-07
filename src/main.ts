@@ -12,7 +12,13 @@ const renderer = new THREE.WebGLRenderer({canvas:document.querySelector('#world'
 renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.4;
 const scene=new THREE.Scene(); scene.background=new THREE.Color('#111317'); scene.fog=new THREE.FogExp2('#111317',.018);
-const camera=new THREE.OrthographicCamera(-14,14,8,-8,.1,100); camera.position.set(9,5,30); camera.lookAt(9,5,0);
+// 斜俯瞰カメラ。docs/isometric-refactor-brief.md フェーズ1(カメラのみ変更)。数値はすべて **AI暫定値** — ガクチョ未指定。`?cam=fov,yaw,pitch,dist` で一時的に上書きして比較できる。
+const camQ=(new URLSearchParams(location.search).get('cam')||'').split(',').map(Number),camN=(i:number,d:number)=>Number.isFinite(camQ[i])&&camQ[i]!==0?camQ[i]:d;
+const CAM_FOV=camN(0,45),CAM_YAW=THREE.MathUtils.degToRad(camN(1,18)),CAM_PITCH=THREE.MathUtils.degToRad(camN(2,26)),CAM_DIST=camN(3,14),CAM_HEIGHT=4.6,CAM_LERP=3,CAM_CATCHUP=9,PLANE_Z=1.4;
+const camera=new THREE.PerspectiveCamera(CAM_FOV,innerWidth/innerHeight,.1,200);
+const camTarget=new THREE.Vector3(9,CAM_HEIGHT,PLANE_Z),camOffset=new THREE.Vector3(Math.sin(CAM_YAW)*Math.cos(CAM_PITCH),Math.sin(CAM_PITCH),Math.cos(CAM_YAW)*Math.cos(CAM_PITCH)).multiplyScalar(CAM_DIST);
+function placeCamera(){camera.position.copy(camTarget).add(camOffset);camera.lookAt(camTarget);}placeCamera();
+const aimPlane=new THREE.Plane(new THREE.Vector3(0,0,1),-PLANE_Z),aimRay=new THREE.Raycaster(),aimNdc=new THREE.Vector2(),aimHit=new THREE.Vector3();
 scene.add(new THREE.HemisphereLight('#b1becb','#302322',2.4));
 const moon=new THREE.DirectionalLight('#c0cee0',3);moon.position.set(20,16,10);moon.castShadow=true;moon.shadow.mapSize.set(2048,2048);moon.shadow.camera.left=-60;moon.shadow.camera.right=60;moon.shadow.camera.top=20;moon.shadow.camera.bottom=-20;scene.add(moon);
 const warm=new THREE.PointLight('#cc9c78',20,16);warm.position.set(5,3,5);scene.add(warm);
@@ -56,8 +62,8 @@ const crumbs=ants.map(()=>{const m=new THREE.Mesh(new THREE.SphereGeometry(.05,5
 const keys=new Set<string>();let mouse={x:innerWidth*.65,y:innerHeight*.5},probe=false;
 addEventListener('keydown',e=>{if(['Space','KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight'].includes(e.code))e.preventDefault();keys.add(e.code);});addEventListener('keyup',e=>keys.delete(e.code));
 addEventListener('blur',()=>{keys.clear();probe=false;});addEventListener('pointermove',e=>{mouse={x:e.clientX,y:e.clientY};});addEventListener('pointerdown',e=>{if(e.button===0&&!(e.target as HTMLElement).closest('button,input'))probe=true;});addEventListener('pointerup',()=>probe=false);
-function resize(){renderer.setSize(innerWidth,innerHeight);veil.width=innerWidth;veil.height=innerHeight;const halfH=5.75;camera.left=-halfH*innerWidth/innerHeight;camera.right=-camera.left;camera.top=halfH;camera.bottom=-halfH;camera.updateProjectionMatrix();}addEventListener('resize',resize);resize();
-function project(x:number,y:number){const v=new THREE.Vector3(x,y,.1).project(camera);return{x:(v.x*.5+.5)*innerWidth,y:(-.5*v.y+.5)*innerHeight};}
+function resize(){renderer.setSize(innerWidth,innerHeight);veil.width=innerWidth;veil.height=innerHeight;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}addEventListener('resize',resize);resize();
+function project(x:number,y:number){const v=new THREE.Vector3(x,y,PLANE_Z).project(camera);return{x:(v.x*.5+.5)*innerWidth,y:(-.5*v.y+.5)*innerHeight};}
 let aim={x:5,y:1};const remembered=new Set<number>();
 function reach(x:number,y:number,dx:number,dy:number,max:number){for(let t=.12;t<max;t+=.12){const px=x+dx*t,py=y+dy*t;if(OBSTACLES.some(o=>px>o.x&&px<o.x+o.w&&py>o.y&&py<o.y+o.h))return t;}return max;}
 function sense(){return .4+.6*Math.min(game.hunger,game.water);}
@@ -66,7 +72,7 @@ function visible(x:number,y:number){const dx=x-game.player.x,dy=y-game.player.y,
 const VEIL_ALPHA=.88,NEAR_SPAN=1.25,NEAR_MID=.97,FAN_CORE=.97,FAN_MID=.8;
 function darkness(){
  ctx.clearRect(0,0,veil.width,veil.height);ctx.fillStyle=`rgba(3,5,7,${VEIL_ALPHA})`;ctx.fillRect(0,0,veil.width,veil.height);
- const p=project(game.player.x,game.player.y),scale=innerHeight/11.5,radius=scale*.9*NEAR_SPAN*sense();
+ const p=project(game.player.x,game.player.y),pu=project(game.player.x+1,game.player.y),scale=Math.hypot(pu.x-p.x,pu.y-p.y),radius=scale*.9*NEAR_SPAN*sense();
  ctx.globalCompositeOperation='destination-out';const near=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,radius);near.addColorStop(0,'rgba(0,0,0,1)');near.addColorStop(.55,`rgba(0,0,0,${NEAR_MID})`);near.addColorStop(1,'transparent');ctx.fillStyle=near;ctx.fillRect(p.x-radius,p.y-radius,2*radius,2*radius);
  const angle=Math.atan2(aim.y-game.player.y,aim.x-game.player.x),range=(probe?4:2.4)*sense(),spread=probe?.87:.52;
  const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,range*scale);g.addColorStop(0,`rgba(0,0,0,${FAN_CORE})`);g.addColorStop(.7,`rgba(0,0,0,${FAN_MID})`);g.addColorStop(1,'transparent');ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(p.x,p.y);for(let i=0;i<=50;i++){const a=angle-spread+spread*2*i/50;const r=reach(game.player.x,game.player.y,Math.cos(a),Math.sin(a),range);const q=project(game.player.x+Math.cos(a)*r,game.player.y+Math.sin(a)*r);ctx.lineTo(q.x,q.y);}ctx.closePath();ctx.fill();ctx.globalCompositeOperation='source-over';
@@ -87,9 +93,10 @@ const moltReq=document.querySelector<HTMLElement>('#molt-req')!;let lastReqHtml=
 const MOLT_NEED=.85; // simulation.ts の moltReady と同じしきい値
 const marks=(v:number)=>{const f=Math.floor(Math.min(1,v/MOLT_NEED)*5);return '●'.repeat(f)+'○'.repeat(5-f);};
 let previous=performance.now(),accumulator=0;function frame(now:number){requestAnimationFrame(frame);const dt=Math.min((now-previous)/1000,.25);previous=now;
- const p=game.player;camera.position.x+=((started?p.x:4)-camera.position.x)*Math.min(1,dt*3);camera.position.y=4.6+Math.sin(now*.055)*game.humanEvent*.08;camera.updateMatrixWorld();const v=new THREE.Vector3(mouse.x/innerWidth*2-1,1-mouse.y/innerHeight*2,0).unproject(camera);aim={x:v.x,y:v.y};
+ const p=game.player;camTarget.x+=((started?p.x:4)-camTarget.x)*Math.min(1,dt*CAM_LERP);camTarget.y=CAM_HEIGHT+Math.sin(now*.055)*game.humanEvent*.08;placeCamera();camera.updateMatrixWorld();
+ aimNdc.set(mouse.x/innerWidth*2-1,1-mouse.y/innerHeight*2);aimRay.setFromCamera(aimNdc,camera);if(aimRay.ray.intersectPlane(aimPlane,aimHit))aim={x:aimHit.x,y:aimHit.y};
  const input={x:Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft')),y:Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown')),sprint:keys.has('ShiftLeft')||keys.has('ShiftRight'),freeze:keys.has('Space'),probe,aimX:aim.x,aimY:aim.y};
- if(started&&!ended&&hatchTime>=4&&Math.abs(camera.position.x-p.x)<camera.right*.8){accumulator+=dt;while(accumulator>=1/60){game.update(1/60,input);accumulator-=1/60;}}
+ if(started&&!ended&&hatchTime>=4&&Math.abs(camTarget.x-p.x)<CAM_CATCHUP){accumulator+=dt;while(accumulator>=1/60){game.update(1/60,input);accumulator-=1/60;}}
  const travel=Math.hypot(p.x-lastX,p.y-lastY);if(travel>.001)bodyHeading=Math.atan2(p.y-lastY,p.x-lastX);lastX=p.x;lastY=p.y;
  const oldHatch=hatchTime;if(started)hatchTime=Math.min(4,(now-hatchStarted)/1000);if(oldHatch<4&&hatchTime>=4){game.siblings.forEach((s,i)=>{s.x=4+Math.cos(i*2.4)*2.4;s.y=1+Math.abs(Math.sin(i*2.4))*2;});}eggLeft.position.x=4-Math.min(1,hatchTime/3)*.4;eggRight.position.x=4+Math.min(1,hatchTime/3)*.4;eggLeft.rotation.z=-hatchTime*.08;eggRight.rotation.z=hatchTime*.08;hero.visible=started;hero.position.set(p.x,p.y,1.4);animateAnimal(hero,now/1000,travel/Math.max(dt,.001),bodyHeading,game.moltProgress);
  moltVisual.update(game.moltProgress,game.moltReady,game.molting||game.state==='won',p.x,p.y,bodyHeading,now/1000);
