@@ -22,8 +22,9 @@ test('3 second hold, full 20 second immobile molt, reset on death',()=>{
 test('ants contact, swarm, exact 3 seconds including molt, random handoff',()=>{
  const g=new Game();g.spiders=[];g.player={x:4,y:8,angle:0,z:0,nx:0,ny:0};g.hunger=g.water=1;g.molting=true;
  g.siblings.forEach((s,n)=>{s.x=4+n*.1;s.y=4;});g.ants.forEach(a=>{a.x=4;a.y=8;});
- step(g,2.8);assert(g.molting);assert(g.antAttack>2.7);assert.equal(g.siblings.filter(s=>s.alive).length,11);
- step(g,.3);assert.equal(g.siblings.filter(s=>s.alive).length,10);assert(!g.molting);assert.equal(g.moltProgress,0);assert(g.player.x<10);
+ const siblingsBefore=g.siblings.filter(s=>s.alive).length;
+ step(g,2.8);assert(g.molting);assert(g.antAttack>2.7);assert.equal(g.siblings.filter(s=>s.alive).length,siblingsBefore);
+ step(g,.3);assert.equal(g.siblings.filter(s=>s.alive).length,siblingsBefore-1);assert(!g.molting);assert.equal(g.moltProgress,0);assert(g.player.x<10);
 });
 test('NPC ant swarm requires continuous contact and kills after 3 seconds',()=>{
  const g=new Game();g.player={x:4,y:1,angle:0,z:0,nx:0,ny:0};g.siblings.forEach(s=>s.alive=false);
@@ -52,8 +53,8 @@ test('spider locks warning for .8 seconds, one capture per lunge',()=>{
  g.spidersUpdate(1/60,{...idle,x:1});const s=g.spiders[0];assert.equal(s.state,'warning');const lock=s.targetY;
  g.player.y=13.5;for(let n=0;n<40;n++)g.spidersUpdate(1/60,idle);assert.equal(s.state,'warning');assert.equal(s.targetY,lock);
  const h=new Game();h.player={x:4,y:4,angle:0,z:0,nx:0,ny:0};h.spiders[0].state='attack';h.spiders[0].angle=0;h.spiders[0].x=9.5;h.spiders[0].y=13.2;
- h.siblings.forEach(q=>{q.x=9.8;q.y=13.2;q.alive=true;});h.spidersUpdate(1/60,idle);
- assert.equal(h.siblings.filter(q=>q.alive).length,10);assert.equal(h.spiders[0].state,'recover');
+ h.siblings.forEach(q=>{q.x=9.8;q.y=13.2;q.alive=true;});const before=h.siblings.filter(q=>q.alive).length;h.spidersUpdate(1/60,idle);
+ assert.equal(h.siblings.filter(q=>q.alive).length,before-1);assert.equal(h.spiders[0].state,'recover');
 });
 test('freeze hides, dash vibration beyond visual cone, occlusion',()=>{
  const g=new Game();g.siblings.forEach(s=>s.alive=false);const s=g.spiders[0];s.x=9.5;s.y=13.2;s.angle=0;

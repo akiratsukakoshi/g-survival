@@ -29,7 +29,7 @@ tick(action);const living=game.siblings.filter(s=>s.alive).length;
  report.waypoints.push({goal,time:+game.time.toFixed(1),group:game.siblings.filter(s=>s.alive).length+1});}
 // Geometry proof covers all six chapter sections with the same solid bounds as gameplay.
 for(const point of [{x:13,y:7},{x:29,y:7},{x:9.5,y:13.2},{x:7,y:14},{x:6,y:20},{x:26,y:24},{x:24,y:30},{x:31,y:31},{x:32,y:32}])route({x:4,y:4},point);
-for(const r of game.resources.filter(r=>r.amount>0)){travel(r);for(let n=0;n<180&&game.state==='playing';n++)tick();if(game.state!=='playing')break;}
+for(const r of game.resources.filter(r=>r.amount>0)){travel(r);const reserve=r.type==='water'?'water':'hunger';for(let n=0;n<600&&game.state==='playing'&&game[reserve]<.99;n++)tick();if(game.state!=='playing')break;}
 if(game.state==='playing'){travel({x:32,y:32});for(let n=0;n<1500&&game.state==='playing';n++)tick({...controls,freeze:true});}
 report.elapsed=+game.time.toFixed(1);report.state=game.state;report.siblings=game.siblings.filter(s=>s.alive).length;report.hunger=game.hunger;report.water=game.water;
 console.log(JSON.stringify(report,null,2));

@@ -24,6 +24,7 @@ const OFF=.16;          // 面から体を離しておく距離
 const ANT_BREAK_DISTANCE=1.2, ANT_BREAK_TIME=.45, ANT_REJOIN_DELAY=1;
 const ANT_REACH=.3;     // アリが届く高さ
 const SPIDER_REACH=1.35;// クモが届く高さ。仕切り壁の上(top 1.5)には届かない
+const AUTONOMOUS_LOSS_BUDGET=10; // 24匹中、敵が自律的に奪う上限。第1章終了目安14匹に合わせたAI暫定値
 const distance = (a:Point,b:Point) => Math.hypot(a.x-b.x,a.y-b.y);
 const ANT_ROUTES:Point[][] = [
   [{x:8,y:15},{x:20,y:15},{x:20,y:16.2},{x:19,y:16.2},{x:19,y:15.4},{x:8,y:15.4}],
@@ -53,9 +54,10 @@ export class Game {
   private nextWander:number[]=[];
   private hold=0; private immune=0; private rng=1234567;
   private climb:{top:number;lo:number;hi:number}|null=null; private grab=0;
+  private npcLosses=0;
 
   constructor() {
-    for(let n=0;n<11;n++) {
+    for(let n=0;n<23;n++) {
       this.siblings.push({x:4+Math.cos(n*2.6)*.5,y:4,alive:true});
       this.swarmTimers.push(0); this.paths.push([]); this.nextWander.push(n*.4);
     }
@@ -280,7 +282,7 @@ export class Game {
       if(!s.alive)return;
       const contact=this.ants.some(a=>a.target===n&&distance(a,s)<.6);
       this.swarmTimers[n]=clamp(this.swarmTimers[n]+(contact?dt:-dt*2),0,3);
-      if(this.swarmTimers[n]>=3-1e-6)s.alive=false;
+      if(this.swarmTimers[n]>=3-1e-6){if(this.npcLosses<AUTONOMOUS_LOSS_BUDGET){s.alive=false;this.npcLosses++;}this.ants.forEach((a,k)=>{if(a.target===n){a.target=null;this.antRejoin[k]=.5;}});this.swarmTimers[n]=0;}
     });
   }
 
@@ -307,7 +309,7 @@ export class Game {
         const npc=this.siblings.find(q=>q.alive&&distance(q,s)<.55);
         let caught=false;
         if(this.immune<=0&&this.player.z<=SPIDER_REACH&&distance(s,this.player)<.65){this.handoff();caught=true;}
-        else if(npc){npc.alive=false;caught=true;}
+        else if(npc){if(this.npcLosses<AUTONOMOUS_LOSS_BUDGET){npc.alive=false;this.npcLosses++;}caught=true;}
         if(caught||this.timers[n]>=.45||distance(before,s)<.001) {
           s.state='recover';s.warningProgress=0;this.timers[n]=0;
         }
