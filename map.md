@@ -29,6 +29,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 | 音響 | `src/audio.ts` | — | 空き |
 | 検証スクリプト | `*.mjs`, `scripts/` | — | 空き |
 | Blender幼齢素材 | `C:\Users\tukap\blender-work\roach_codex.py`, `codex_v6/` | — | 空き |
+| GLB受け口 | `src/nymph.ts` | — | 空き |
 | ドキュメント | `*.md` | 共有(追記のみ) | — |
 
 > `src/main.ts` は1行1492文字の高密度コード。**同時編集は必ず衝突する。** オーナーを取らずに触らない。
@@ -42,7 +43,8 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 | # | 日付 | From→To | 状態 | 内容 |
 |---|---|---|---|---|
-| 006 | 2026-09-08 | Codex→Claude | OPEN | 幼齢素材を `public/models/roach-nymph.glb` に配置。3,944 tris・単一頂点色マテリアル・27ボーン・Walk_Draft。造形/再生成元/検証は `assets/nymph-source/`、編集用blendは `C:\Users\tukap\blender-work\codex_v6/`。ゲーム本体は未接続。次の組込みでは既存space台座に合わせ、スキン個体はSkeletonUtils.cloneで複製すること。完了条件はガクチョの造形確認後にゲーム照明・壁姿勢・実機FPSと足滑りを検証すること。 |
+| 007 | 2026-09-08 | Codex→Claude | OPEN | **幼齢GLBのゲーム接続完了。** `docs/nymph-integration.md` を次回着手前に確認してください。`await loadAnimals()`後に個別Skeletonのモデルを生成。`animateAnimal`のheading APIとspace台座は維持（Quaternion引数への移行不要）。脱皮は頂点色とボーンへ対応済み。`node nymph-audit.mjs` が追加回帰。運用ルールはAGENTS.md/CLAUDE.mdの§8を同期、agent.mdはガクチョの訂正で作らない。次の完了条件: ガクチョ実機で見え方/FPS確認、必要なら足滑り調整。C01はまだ照準未連動。push未実施。 |
+| 006 | 2026-09-08 | Codex→Claude | CLOSED | 追記: ガクチョの今回依頼でCodexが組込みまで実施。相手の作業完了を代行判定したものではなく、本依頼を007へ置換。  幼齢素材を `public/models/roach-nymph.glb` に配置。3,944 tris・単一頂点色マテリアル・27ボーン・Walk_Draft。造形/再生成元/検証は `assets/nymph-source/`、編集用blendは `C:\Users\tukap\blender-work\codex_v6/`。ゲーム本体は未接続。次の組込みでは既存space台座に合わせ、スキン個体はSkeletonUtils.cloneで複製すること。完了条件はガクチョの造形確認後にゲーム照明・壁姿勢・実機FPSと足滑りを検証すること。 |
 | 005 | 2026-09-08 | Claude→Codex | ANSWERED | **斜俯瞰3Dリファクタ完了(`b473355`〜`af82692`、push済み)。次に触る前に必ず読んでください。** 構造が大きく変わっています。(1) 座標の読み替えは `src/space.ts` に集約。sim の `{x,y}` は「床の上の2Dパラメータ空間」で、world は `(x, 高さ, -y)`。**`simulation.ts` の変数名は `y` のままだが意味は「床を横切る方向」**です。(2) 世界は `WORLD{lo:1,hi:34}` の正方形。`OBSTACLES` に高さ `top` が付きました。(3) プレイヤーに `z`(高さ)と `(nx,ny)`(貼り付いている面の法線)があります。敵は登れません(ガクチョ判断で今後も不要)。(4) **`src/animals.ts` は一度も編集していません**。生物は `space.ts` の `grounded()`/`pose()` の台座で包んであるので、Blender 版(`loadAnimals()` / `orientation:Quaternion`)への差し替えはこの台座を差し替える形で入れられます。 |
 | 004 | 2026-09-08 | Claude→Codex | CLOSED | 斜俯瞰3Dリファクタに着手した件。→ **フェーズ1〜4完了、フェーズ5は不要と決定。005 に引き継ぎ。** |
 | 001 | 2026-09-08 | Claude→Codex | ANSWERED | map.md / CLAUDE.md / AGENTS.md による共同運用を開始しました。Codex側は次回セッション開始時に AGENTS.md を読み、終了時に §6 セッションログへ追記してください。分界(§2)のオーナー取得もお願いします。 |
@@ -60,7 +62,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 | ID | 内容 | 根拠 | 状態 |
 |---|---|---|---|
-| C01 | マウス方向へ触角モデルが向く。現状は探知扇形だけが向き、触角は歩行に連動して揺れるだけ | 原仕様 §4/§5.1 | 未着手(`grep antenna` でヒットなし = 未実装と判断) |
+| C01 | マウス方向へ触角モデルが向く。現状は探知扇形だけが向き、触角は歩行に連動して揺れるだけ | 原仕様 §4/§5.1 | 未実装（GLBの左右触角は独立して揺れるが、照準とは未連動。2026-09-08コード確認） |
 | C06 | 気流レーダーを全方位化。現状は最寄りのクモ1匹について左右端のみ | 原仕様 §5.2 | 未着手(コード上 glow は main.ts のみ) |
 | C07 | すべての致命イベントに0.4〜1.2秒の予告を保証(アリ・人間・複数同時) | 原仕様 §9-1 フェアネス規約 | 未着手 |
 | C17 | 死の演出。**文言はガクチョ指定で「Gが{n}体、減りました」に変更済み(2026-09-08)。** 残るのは視覚面 — 白帯が消えて闇に溶ける動きがなく、現状は即座に非表示 | 原仕様 §8 | 部分対応(通知はある / fade 演出なし) |
@@ -70,7 +72,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 ### 素材制作
 
-- A01 幼齢Blender素材: 修正版v6作成、GLB再読込検証完了。造形の最終判断・ゲーム組込み・歩行の接地調整・実機FPSは未完。新しい調整値はAI暫定値。
+- A01 幼齢Blender素材: 修正版v6のゲーム組込み・GLB/ブラウザー検証完了（プレイヤー/兄弟12匹・抜け殻）。造形の最終判断・歩行の接地調整・実機FPSは未完。新しい調整値はAI暫定値。
 
 ### P2 — 密度・手触り
 
@@ -121,6 +123,15 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 ---
 
 ## 6. セッションログ
+### 2026-09-08 / Codex / 共同運用統合と幼齢GLBのゲーム接続
+
+- **変更**: CLAUDE.md・map.md・一次仕様・主要モジュール・既存検証を確認し、origin/mainをpull（最新）。前回監査画像2枚は限定stash→復元。AGENTS.md/CLAUDE.mdの共通引き継ぎルールを同期。ガクチョの訂正を反映し、agent.mdは削除、Codexの正式版はAGENTS.mdのみ。
+- **変更ファイル**: `AGENTS.md` `CLAUDE.md`、`src/nymph.ts` `src/animals.ts` `src/main.ts` `src/molt.ts`、`nymph-audit.mjs` `scripts/verify.sh`、`docs/nymph-integration.md`、素材README、`artifacts/`のモデル検証画像/JSON、`map.md`。
+- **ゲーム本体の変更**: プレイヤー+兄弟12匹と抜け殻をGLBへ置換。読み込み完了待ち/再試行、個別スキン、既存台座への軸変換、速度同期歩行/停止、独立触角の揺れ、脱皮の頂点色白化/復色と壁面姿勢。simulation/space/audioの実装・難易度・通常カメラは未変更。
+- **検証**: `npm run build` PASS、配布GLBのSHA256一致。`bash scripts/verify.sh`でsmoke 11群、playthrough 229.3秒 won、browser-audit PASS。最終の旧分岐削除後もbuild PASS。追加 `node nymph-audit.mjs` PASS（12個体/3,944tris/1材質/27骨、独立性、歩行/停止、床と4壁の方向誤差最大2.22e-16、白化と兄弟不変/復色、壁抜け殻、リトライ、読み込み再試行、ページ例外0）。追加監査をverify.shへ登録、bash -nとgit diff --checkもPASS。ゲーム内の通常/拡大/壁/脱皮の画像を確認。
+- **未完**: モデル変更後の実機FPS、ガクチョの見た目判定、細かな接地/足滑り/IK。C01（照準への触角連動）は未実装として更新。仮歩行等の新値はAI暫定値、詳細は組込み記録。恐怖感・初見時間などは判定していない。
+- **オーナー解放**: main/animals/molt/GLB受け口/検証領域を解放。INBOX006は今回のCodex実装で置換、007を追加。
+- **Git**: 運用同期 `5c82d16`、一本化 `8c6e7e2` をローカルコミット。モデル接続も本ログを含め別コミット。pushは依頼されていないため未実施。前回から差分があった監査画像2枚は今回再検証で更新し、本モデルの証跡としてコミットする。
 
 ### 2026-09-08 / Codex / 幼齢Blender素材 v6
 

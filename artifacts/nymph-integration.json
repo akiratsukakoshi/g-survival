@@ -1,0 +1,79 @@
+{
+  "instances": 12,
+  "triangles": 3944,
+  "materials": 1,
+  "bones": 27,
+  "independent": true,
+  "moved": true,
+  "stopped": true,
+  "orientations": [
+    {
+      "nx": 0,
+      "ny": 0,
+      "upError": 2.220446049250313e-16,
+      "front": [
+        2.220446049250313e-16,
+        2.220446049250313e-16,
+        -1
+      ]
+    },
+    {
+      "nx": 1,
+      "ny": 0,
+      "upError": 2.220446049250313e-16,
+      "front": [
+        4.930380657631324e-32,
+        1,
+        -2.220446049250313e-16
+      ]
+    },
+    {
+      "nx": -1,
+      "ny": 0,
+      "upError": 2.220446049250313e-16,
+      "front": [
+        4.930380657631324e-32,
+        1,
+        2.220446049250313e-16
+      ]
+    },
+    {
+      "nx": 0,
+      "ny": 1,
+      "upError": 0,
+      "front": [
+        -2.220446049250313e-16,
+        1,
+        0
+      ]
+    },
+    {
+      "nx": 0,
+      "ny": -1,
+      "upError": 0,
+      "front": [
+        2.220446049250313e-16,
+        1,
+        0
+      ]
+    }
+  ],
+  "whitening": true,
+  "restored": true,
+  "wall": {
+    "normal": [
+      -1,
+      0
+    ],
+    "quaternion": [
+      0,
+      -0.7071067811865475,
+      0,
+      0.7071067811865476
+    ]
+  },
+  "wallMolt": true,
+  "restart": true,
+  "loadRetry": true,
+  "pageErrors": []
+}
