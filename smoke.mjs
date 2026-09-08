@@ -36,6 +36,17 @@ test('sprinting breaks ant contact before capture',()=>{
  g.ants.forEach(a=>{a.x=4;a.y=8;});step(g,.6);assert(g.antAttack>.5);
  step(g,1.5,{...idle,x:1,sprint:true});assert.equal(g.state,'playing');assert.equal(g.antAttack,0);
 });
+test('ant escape: sprint disengages at normal/low reserves; a lost ant resists swarm recruitment',()=>{
+ for(const reserves of [.5,.2]){
+  const g=new Game();g.spiders=[];g.resources=[];g.siblings.forEach(s=>s.alive=false);Object.assign(g.player,{x:12,y:7});g.hunger=g.water=reserves;g.ants.forEach(a=>{a.x=12;a.y=7;});step(g,.6);assert(g.antAttack>.5);
+  step(g,2.3,{...idle,x:1,sprint:true});assert.equal(g.state,'playing');assert.equal(g.antAttack,0);assert(!g.ants.some(a=>a.target===-1));
+ }
+ const g=new Game();g.spiders=[];g.siblings.forEach(s=>s.alive=false);Object.assign(g.player,{x:12,y:7});g.ants=g.ants.slice(0,2);
+ Object.assign(g.ants[0],{x:10.75,y:7,target:-1});Object.assign(g.ants[1],{x:11.5,y:7,target:-1});g.antLost[0]=.45;g.antsUpdate(1/60);
+ assert.equal(g.ants[0].target,null,'nearby pursuer must not immediately recruit the escaped ant');assert(g.antRejoin[0]>.9);
+ Object.assign(g.ants[0],{x:12,y:7});g.antsUpdate(1/60);assert.equal(g.ants[0].target,null,'brief rejoin delay must also block direct reacquisition');
+ for(const input of [{...idle,x:1},{...idle,x:1,sprint:true,probe:true}]){const h=new Game();h.spiders=[];h.resources=[];h.siblings.forEach(s=>s.alive=false);Object.assign(h.player,{x:12,y:7});h.ants.forEach(a=>{a.x=12;a.y=7;});step(h,3.2,input);assert.equal(h.state,'lost','walking or probing must not silently gain a dash escape');}
+});
 test('spider locks warning for .8 seconds, one capture per lunge',()=>{
  const g=new Game();g.ants=[];g.siblings.forEach(s=>s.alive=false);g.player={x:11.5,y:13.2,angle:0,z:0,nx:0,ny:0};
  g.spidersUpdate(1/60,{...idle,x:1});const s=g.spiders[0];assert.equal(s.state,'warning');const lock=s.targetY;

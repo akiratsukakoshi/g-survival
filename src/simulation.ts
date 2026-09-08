@@ -20,6 +20,8 @@ const clamp = (v:number,lo=0,hi=1) => Math.max(lo,Math.min(hi,v));
 // フェーズ3 壁登り。すべて AI暫定値(ガクチョ未指定)。
 const CLIMB_GRAB=.35;   // 面を押し続けて張り付くまでの秒数。予告なく貼り付かないための間
 const OFF=.16;          // 面から体を離しておく距離
+// アリ離脱の調整値はAI暫定値（2026-09-08、ガクチョの逃げづらさ報告への対応）。
+const ANT_BREAK_DISTANCE=1.2, ANT_BREAK_TIME=.45, ANT_REJOIN_DELAY=1;
 const ANT_REACH=.3;     // アリが届く高さ
 const SPIDER_REACH=1.35;// クモが届く高さ。仕切り壁の上(top 1.5)には届かない
 const distance = (a:Point,b:Point) => Math.hypot(a.x-b.x,a.y-b.y);
@@ -46,7 +48,7 @@ export class Game {
   private timers=[0,0];
   private patrolTarget=[1,0];
   private swarmTimers:number[]=[];
-  private antLost:number[]=[];
+  private antLost:number[]=[]; private antRejoin:number[]=[];
   private paths:Point[][]=[];
   private nextWander:number[]=[];
   private hold=0; private immune=0; private rng=1234567;
@@ -246,7 +248,8 @@ export class Game {
 
   private antsUpdate(dt:number) {
     this.ants.forEach((a,n)=>{
-      if(a.target===null) {
+      this.antRejoin[n]=Math.max(0,(this.antRejoin[n]||0)-dt);
+      if(a.target===null&&this.antRejoin[n]===0) {
         if(this.immune<=0&&this.player.z<=ANT_REACH&&distance(a,this.player)<.48)a.target=-1;
         else {const index=this.siblings.findIndex(s=>s.alive&&distance(a,s)<.45);if(index>=0)a.target=index;}
       }
@@ -254,12 +257,12 @@ export class Game {
       const alive=a.target===-1||!!(target as Cockroach|undefined)?.alive;
       const old={x:a.x,y:a.y};
       if(target&&alive) {
-        this.antLost[n]=distance(a,target)>2.2?this.antLost[n]+dt:0;
-        if(this.antLost[n]>1.2){a.target=null;this.antLost[n]=0;}
+        const playerTarget=a.target===-1;this.antLost[n]=distance(a,target)>(playerTarget?ANT_BREAK_DISTANCE:2.2)?this.antLost[n]+dt:0;
+        if(this.antLost[n]>(playerTarget?ANT_BREAK_TIME:1.2)){if(playerTarget)this.antRejoin[n]=ANT_REJOIN_DELAY;a.target=null;this.antLost[n]=0;}
         else {
           this.toward(a,target,1.85,dt);
           // Nearby ants leave the column and join the same target.
-          for(const other of this.ants)if(other.target===null&&distance(other,a)<1.15)other.target=a.target;
+          this.ants.forEach((other,k)=>{if(other.target===null&&!this.antRejoin[k]&&distance(other,a)<1.15)other.target=a.target;});
         }
       } else a.target=null;
       if(a.target===-1&&this.player.z>ANT_REACH)a.target=null;   // 登られたら見失う
