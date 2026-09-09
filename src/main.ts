@@ -1,12 +1,15 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Game, OBSTACLES, WORLD, WALL_TOP } from './simulation';
+import { completeChapterOne, mountChapterTwo } from './chapter2';
 import { AudioEngine } from './audio';
 import './style.css';
 import { MoltVisual } from './molt';
 import { createAnimal, animateAnimal, loadAnimals } from './animals';
 import { PLANE_H, toWorld, place, grounded, pose } from './space';
 
+if (new URLSearchParams(location.search).get('chapter') === '2') mountChapterTwo();
+else {
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `<canvas id="world"></canvas><canvas id="veil"></canvas><div class="vignette"></div><header><span class="mark">G-survival <small>— 隙間の生 —</small></span><span class="chapter">CHAPTER 01 / 屋根裏</span></header><div id="entry"><div class="eyebrow">A LIFE BENEATH OUR FEET</div><h1>G-survival</h1><h2>— 隙間の生 —</h2><p class="story">あなたは、孵化したばかりのクロゴキブリの幼虫。<br>まだ飛べない。闇の中を、触角と気流を頼りに生きる。</p><p class="goal"><b>第1章：最初の脱皮</b><br>餌と水を探し、安全な隙間へ。<br>満たされた体で Space を3秒押し、20秒間の脱皮を生き延びる。<br>死ねば、どこかで生きている仲間へ。群れの命も、残りわずか。</p><button id="begin">卵から孵る <span>↗</span></button><small>音のある環境で体験してください</small></div><div id="ending" hidden><div class="eyebrow">CHAPTER 01</div><h2></h2><p></p><button id="again">もう一度、孵る ↗</button></div><aside id="hud"><div id="population" aria-live="polite"></div><div id="survival"><label>体力 <meter id="health" min="0" max="1"></meter></label><label>栄養 <meter id="hunger" min="0" max="1"></meter></label><label>水分 <meter id="water" min="0" max="1"></meter></label></div><div id="objective"></div><div id="molt-req"></div><div class="sound-controls"><button id="sound">音を有効にする</button><button id="test-sound">音を確認</button></div><label class="volume">音量 <input id="volume" aria-label="音量" type="range" min="0" max="1" step="0.05" value="0.8"></label><div id="sound-status" role="status"></div></aside><div id="controls">WASD / 矢印：壁を這う　·　Shift：走る　·　Space：静止　·　左長押し：探る</div><div id="warning" role="status"></div><footer><span>PERIPLANETA FULIGINOSA</span><span>01 — FIRST INSTAR</span></footer>`;
 const begin=document.querySelector<HTMLButtonElement>('#begin')!;begin.disabled=true;begin.textContent='孵化の準備中…';
@@ -173,7 +176,7 @@ let previous=performance.now(),accumulator=0;function frame(now:number){requestA
  moon.position.set(p.x+10,14,-p.y+7);moon.target.position.set(p.x,0,-p.y);moon.target.updateMatrixWorld();
  audio.update(dt,{speed:started&&!ended?travel/Math.max(dt,.001):0,danger:game.danger.strength,pan:Math.sign(game.danger.x-p.x),molting:game.molting,stamina:game.stamina,human:game.humanEvent,ants:game.antAttack,vertical:(game.danger.y-p.y),loss:lossNotice>2.9});
  renderer.render(scene,camera);darkness();
- if(started&&!ended&&game.state!=='playing'){ended=true;const end=document.querySelector<HTMLElement>('#ending')!;end.hidden=false;end.querySelector('h2')!.textContent=game.state==='won'?'まだ、生きている。':'闇が、静かになった。';end.querySelector('p')!.textContent=game.state==='won'?'はじめての脱皮を終えた。':'Gの群れは、全滅した。';}
+ if(started&&!ended&&game.state!=='playing'){ended=true;const end=document.querySelector<HTMLElement>('#ending')!;end.hidden=false;end.querySelector('h2')!.textContent=game.state==='won'?'まだ、生きている。':'闇が、静かになった。';end.querySelector('p')!.textContent=game.state==='won'?'はじめての脱皮を終えた。':'Gの群れは、全滅した。';if(game.state==='won'){completeChapterOne(game.siblings.filter(s=>s.alive).length+1);const again=document.querySelector<HTMLButtonElement>('#again')!;again.dataset.next='chapter2';again.textContent='壁の中へ進む ↓';again.onclick=()=>{const url=new URL(location.href);url.searchParams.set('chapter','2');url.searchParams.set('from','chapter1');location.assign(url);};}}
 }requestAnimationFrame(frame);begin.disabled=false;begin.innerHTML='卵から孵る <span>↗</span>';
 
 
@@ -189,3 +192,5 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('test')) {
 
 }
 void boot().catch(error=>{console.error(error);begin.disabled=false;begin.textContent='読み込みを再試行';begin.onclick=()=>location.reload();});
+
+}

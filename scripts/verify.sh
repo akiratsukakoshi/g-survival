@@ -22,6 +22,7 @@ echo ""
 echo "===== browser-audit.mjs ====="
 if curl -sf -o /dev/null --max-time 3 http://127.0.0.1:5173/; then
   if node browser-audit.mjs; then echo "--- OK"; else echo "--- NG"; fail=1; fi
+  run "chapter2-audit.mjs" node chapter2-audit.mjs
   run "nymph-audit.mjs (GLB integration)" node nymph-audit.mjs
 else
   echo "--- SKIP: 開発サーバーが未起動。別ターミナルで 'npm run dev' を実行してから再度流すこと。"

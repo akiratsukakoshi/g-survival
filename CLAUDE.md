@@ -103,5 +103,6 @@ bash scripts/verify.sh       # 下の一括実行
 - INBOXの完了連絡には、対象ファイル、変更されたAPI/座標/素材規約、再現・検証方法、次の担当が必要な作業と完了条件を記載する。チャットだけで申し送りを完結させない。
 - 生物のモデル座標は現行APIで +X前方/+Z背中。接触面の姿勢は `space.ts` の台座が担当する。glTFの -Z前方/+Y上は読み込み層で変換し、simulationの移動・判定と混同しない。
 - Blender編集元は `C:\Users\tukap\blender-work`、配布GLBは `public/models/`、再生成元は `assets/nymph-source/`。スキン付き個体は骨を共有せず複製し、材質の個体差・脱皮・リセットも検証する。
+- `helper_unknown_error: setup refresh had errors` が出た場合は、Linux権限変更や設定変更を試さない。原因はWindowsサンドボックスが `\\wsl.localhost` にACLを付ける前処理である。以後のコマンドはWindows側の安定した作業ディレクトリから、承認済みの `wsl -e bash -ic 'cd /home/tukapontas/g-survival && ...'` で実行する。編集はWindows側の書き込み可能な一時領域でパッチ／変換スクリプトを `apply_patch` で作成し、WSL内部で `git diff --check` と内容確認後に対象ファイルへ反映する。UNCを作業ディレクトリにした通常実行や、同じ失敗経路の反復をしない。
 - WSL内のNode/npmを使用する。Windows npmが混ざる場合は利用可能な `~/.nvm/versions/node/` を確認し、そのbinをPATH先頭へ置く（回帰検証はNode 23以降）。Windows側から起動する場合はパスの空白に注意する。
 - 必須検証はbuildと `scripts/verify.sh`。モデル変更時は読み込み失敗、複数個体の独立性、進行方向と壁姿勢、停止/歩行、脱皮の白化/復色と再開始を追加検証する。ブラウザーSKIPは合格に数えない。実機FPSや見た目の最終判断はガクチョ待ちとして分ける。
