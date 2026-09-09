@@ -137,6 +137,13 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 ---
 
 ## 6. セッションログ
+### 2026-09-09 / Codex / ムカデ確認素材を15対の脚へ調整
+
+- **変更**: `assets/centipede-source/centipede_preview.py` の体節を17へ延長し、脚を11対から15対へ変更。頭部は無機質な側面眼スリットと毒爪を維持したまま、頭盾・頭部の角丸を増やした。GLB出力、ゲームコード、既存配布モデルは未変更。
+- **検証**: Blender 4.0.2 background CLIで真上／真横／斜俯瞰／正面寄りを再レンダー。`.blend`再読込時に足根30本=15対、足根の最低Z=`0.018756`、床面Z=`0.018756`、差=`0.000000`を確認。斜俯瞰を目視確認。恐怖感、歩行中の接地、ゲーム照明下の見え方、GLB変換・組込みは未検証／未実施。
+- **回帰**: WSL Node v23.7.0を明示して `npm run build` PASS、`bash scripts/verify.sh` のbuild／smoke 12群／playthrough(260.7秒、won、13匹) PASS。browser-auditは開発サーバー未起動でSKIP（合格扱いではない）。
+- **運用**: Blenderムカデ確認素材のオーナーを解放。pushはガクチョ指示がないため行わない。
+
 ### 2026-09-09 / Codex / ムカデBlender確認素材の改良（PNGのみ）
 
 - **素材**: `assets/centipede-source/centipede_preview.py` と `preview/centipede_preview.blend` を更新。黒緑の節板、黄褐色の多脚、赤褐色の頭部・尾脚を維持しつつ、丸い顔を角張った頭盾へ変更した。側眼は反射しない極小の側面スリットにし、口器・毒爪・頭盾の稜線を追加。GLB出力、既存GLB、ゲームコードは変更していない。
