@@ -139,6 +139,12 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 ---
 
 ## 6. セッションログ
+### 2026-09-09 / Codex / ムカデGLB組込みの文書記録とpush
+
+- **記録**: `docs/chapter2-implementation-status.md` の旧9節プリミティブ記述を、15対の脚を持つGLB、ゲーム側の節／脚／触角／毒爪の手続きアニメーション、GLBの座標変換と再生成元へ更新した。
+- **検証の記録**: Blender 4.0.2でのGLB再読込（435,724 bytes、169オブジェクト、頭部、脚先30本）、build、smoke12群、既知経路260.7秒・won・13匹、chapter2-audit（ページ例外0）を記載。実機FPS、動きの自然さ、恐怖感、接地感は未検証として維持。
+- **運用**: 文書のみの追加でコード・GLBは未変更。ガクチョの明示指示により、記録をコミット後 `origin/main` へ通常pushする。
+
 ### 2026-09-09 / Codex / ムカデGLBの第2章組込みと移動アニメーション
 
 - **実装**: `assets/centipede-source/centipede_preview.py` から、スタジオ床・カメラ・照明を除いた `public/models/centipede.glb` を書き出した。`src/centipede.ts` を追加し、GLTFLoader、座標変換、節の横うねり、15対の脚の左右交互運動、触角・毒爪の動作を実装。`src/chapter2.ts` の旧9節プリミティブをGLBへ置換し、巡回/警告/追跡/退避で運動量を変更。間柱の奥に隠れないよう前面Z=.72へ配置した。数値はAI暫定値。
