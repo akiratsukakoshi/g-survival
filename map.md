@@ -30,6 +30,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 | 検証スクリプト | `*.mjs`, `scripts/` | — | 空き |
 | Blender幼齢素材 | `C:\Users\tukap\blender-work\roach_codex.py`, `codex_v6/` | — | 空き |
 | Blenderムカデ確認素材 | `assets/centipede-source/` | — | 空き |
+| 第2章ムカデGLB受け口・アニメ | `src/centipede.ts`, `src/chapter2.ts` | — | 空き |
 | GLB受け口 | `src/nymph.ts` | — | 空き |
 | ドキュメント | `*.md` | 共有(追記のみ) | — |
 
@@ -44,6 +45,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 | # | 日付 | From→To | 状態 | 内容 |
 |---|---|---|---|---|
+| 012 | 2026-09-09 | Codex→Claude | OPEN | ムカデを `public/models/centipede.glb`（435,724 bytes、頭部1・脚先30=15対）へ書き出し、`src/centipede.ts` を追加してGLTFLoaderで読み込むよう第2章へ接続。ネイティブglTFの -Z前方/+Y上を、壁面上の+X前方/+Z外向きへ変換。`chapter2.ts` の旧9節プリミティブは削除し、巡回/警告/追跡/退避に応じて節の横うねり、左右交互の脚運動、触角・毒爪の動作量を変える。ムカデは壁の前面Z=.72に配置。`node chapter2-audit.mjs` PASS（ページ例外0、追跡、退避、予告、頭部接触）、build/verify PASS。実機の見た目・FPS・恐怖感・動きの自然さはガクチョ確認待ち。 |
 | 011 | 2026-09-09 | Codex→Claude | OPEN | 第2章のpreview指摘を反映。`src/chapter2.ts` はムカデを予告後に頭部がプレイヤーへ追跡する挙動へ修正し、半径0.58の頭部接触だけで1匹喪失（胴体近傍は無害）、左右の可視横穴で退避・追跡解除、開始直後の兄弟3体の別居散開、断熱材→配管→巾木→キッチン床下の背景構成を追加。ゴキブリ頭の進行方向も壁面座標に合わせて修正。`chapter2-audit.mjs` は追跡・非接触・予告・喪失を回帰。ゲジ、ヤモリ、章内脱皮、3齢モデル差し替えは未実装。完了条件はガクチョの実機で追跡・隙間・見た目を確認すること。 |
 | 010 | 2026-09-09 | Codex→Claude | OPEN | 第2章をThree.js縦壁面へ更新。`src/chapter2.ts` に章セーブ、縦追従カメラ、間柱・配管・左右の隙間、ムカデの決定論的巡回／0.6秒予告／追跡／接触1匹喪失／通過可能隙間で解除を実装。`chapter2-audit.mjs` で直接8匹・13匹引き継ぎ・狭隙間拒否・予告時間・退避・喪失・例外0を確認。モデルは壁面XYに対し+Z背中をそのまま使用。見た目・FPS・難易度はガクチョ実機待ち。 |
 | 009 | 2026-09-08 | Codex→Claude | OPEN | 第1章を操作個体込み24匹へ変更。自律捕食は10匹を上限とするAI暫定値で、既知経路では24→13匹・260.7秒・won。`docs/chapter2-spec.md` に、屋根裏から壁内を一階分下降して床下からキッチンへ至る縦ステージ仕様を記録。次の実装は章間セーブ、章ルーター、イントロ共通枠、縦シャフト最小区画。 |
@@ -137,6 +139,13 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 ---
 
 ## 6. セッションログ
+### 2026-09-09 / Codex / ムカデGLBの第2章組込みと移動アニメーション
+
+- **実装**: `assets/centipede-source/centipede_preview.py` から、スタジオ床・カメラ・照明を除いた `public/models/centipede.glb` を書き出した。`src/centipede.ts` を追加し、GLTFLoader、座標変換、節の横うねり、15対の脚の左右交互運動、触角・毒爪の動作を実装。`src/chapter2.ts` の旧9節プリミティブをGLBへ置換し、巡回/警告/追跡/退避で運動量を変更。間柱の奥に隠れないよう前面Z=.72へ配置した。数値はAI暫定値。
+- **GLB検証**: Blender 4.0.2でGLB再読込。435,724 bytes、169オブジェクト、`head`あり、脚先30本=15対を確認。Blenderから4視点PNGも再生成。
+- **回帰**: WSL Node v23.7.0で `npm run build` PASS、`bash scripts/verify.sh` のbuild／smoke12群／playthrough(260.7秒、won、13匹) PASS。開発サーバーを用いた `node chapter2-audit.mjs` はThree.js起動、GLBロード、8/13匹、退避、狭隙間拒否、追跡、頭部のみ接触、0.6秒予告、1匹喪失、ページ例外0をPASS。verify.sh内browser-auditはサーバー停止後のためSKIP（合格扱いではない）。
+- **未検証**: 実機でのFPS、ゲーム照明下の最終見た目、恐怖感、動きの自然さ、移動中の接地感はガクチョ確認待ち。GLBのリグ／歩行クリップ化は行わず、移動アニメーションはゲーム側の手続き駆動。オーナーを解放し、pushはガクチョ指示がないため行わない。
+
 ### 2026-09-09 / Codex / ムカデ確認素材を15対の脚へ調整
 
 - **変更**: `assets/centipede-source/centipede_preview.py` の体節を17へ延長し、脚を11対から15対へ変更。頭部は無機質な側面眼スリットと毒爪を維持したまま、頭盾・頭部の角丸を増やした。GLB出力、ゲームコード、既存配布モデルは未変更。

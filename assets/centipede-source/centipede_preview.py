@@ -1,8 +1,9 @@
 import bpy, math, os
 from mathutils import Vector
 
-# Preview-only centipede study. No glTF/GLB export is performed.
+# Centipede source: renders preview plates and exports the static game GLB.
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'preview')
+GAME_GLB = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'public', 'models', 'centipede.glb'))
 os.makedirs(OUT, exist_ok=True)
 bpy.ops.object.select_all(action='SELECT')
 bpy.ops.object.delete(use_global=False)
@@ -80,6 +81,16 @@ views={
     'centipede_front.png':(1.65,4.35,.78),
 }
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT,'centipede_preview.blend'))
+# Game asset excludes the studio floor, lights, and camera. Movement is driven
+# procedurally from these named pieces in src/centipede.ts.
+creature_prefixes=('tergite_','sternite_','head','shield_','eye_','mandible_','leg_','antenna_','forcipule_','terminal_leg_')
+bpy.ops.object.select_all(action='DESELECT')
+creature=[o for o in bpy.context.scene.objects if o.name.startswith(creature_prefixes)]
+for o in creature:o.select_set(True)
+bpy.context.view_layer.objects.active=creature[0]
+os.makedirs(os.path.dirname(GAME_GLB),exist_ok=True)
+bpy.ops.export_scene.gltf(filepath=GAME_GLB,export_format='GLB',use_selection=True,export_yup=True,export_animations=False)
+print('GAME_GLB_EXPORTED',GAME_GLB,len(creature))
 for filename,loc in views.items():
     cam.location=loc; cam.rotation_euler=(target-cam.location).to_track_quat('-Z','Y').to_euler(); sc.render.filepath=os.path.join(OUT,filename)
     bpy.ops.render.render(write_still=True); print('PREVIEW_RENDERED',sc.render.filepath)
