@@ -29,6 +29,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 | 音響 | `src/audio.ts` | — | 空き |
 | 検証スクリプト | `*.mjs`, `scripts/` | — | 空き |
 | Blender幼齢素材 | `C:\Users\tukap\blender-work\roach_codex.py`, `codex_v6/` | — | 空き |
+| Blenderムカデ確認素材 | `assets/centipede-source/` | — | 空き |
 | GLB受け口 | `src/nymph.ts` | — | 空き |
 | ドキュメント | `*.md` | 共有(追記のみ) | — |
 
@@ -136,6 +137,14 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 ---
 
 ## 6. セッションログ
+### 2026-09-09 / Codex / ムカデBlender確認素材の改良（PNGのみ）
+
+- **素材**: `assets/centipede-source/centipede_preview.py` と `preview/centipede_preview.blend` を更新。黒緑の節板、黄褐色の多脚、赤褐色の頭部・尾脚を維持しつつ、丸い顔を角張った頭盾へ変更した。側眼は反射しない極小の側面スリットにし、口器・毒爪・頭盾の稜線を追加。GLB出力、既存GLB、ゲームコードは変更していない。
+- **出力**: 共通の暗いスタジオ背景・控えめな床面で、真上／真横／斜俯瞰／正面寄りのPNGを各960×720で生成。Blender 4.0.2のbackground CLIで完走した。
+- **接地検証**: `.blend` 再読込後、22本の足根のワールド最低Z=`0.019486` と床面Z=`0.019486` が一致（差は丸め誤差内）。横視点でも脚先が床面に接することを目視した。恐怖感、ゲーム照明下の視認性、歩行時の接地、GLB変換・ゲーム組込みは未検証／未実施。
+- **回帰**: WSL Node v23.7.0を明示して `npm run build` PASS、`bash scripts/verify.sh` のbuild／smoke 12群／playthrough(260.7秒、won、13匹) PASS。browser-auditは開発サーバー未起動のためSKIP（合格扱いではない）。
+- **運用**: Blenderムカデ確認素材のオーナーを解放。pushはガクチョ指示がないため行わない。
+
 ### 2026-09-09 / Codex / 第2章現在地の記録とpush
 
 - **記録**: `docs/chapter2-implementation-status.md` を追加し、第2章で現在プレイできる要素、ムカデ・ゲジの実装境界、検証済み条件、AI暫定値、ガクチョ確認待ち、次の未完を一つに確定記録した。
