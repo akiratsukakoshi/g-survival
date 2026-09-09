@@ -1,99 +1,45 @@
-type ChapterSave = {
-  version: 1;
-  unlockedChapter: number;
-  currentChapter: number;
-  survivors: number;
-  instar: number;
-  bodySize: number;
-  injuries: string[];
-};
+import * as THREE from 'three';
+import { animateAnimal, createAnimal, loadAnimals } from './animals';
 
-const SAVE_KEY = 'g-survival-progress-v1';
-const clamp = (value: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, value));
-
-export function readProgress(): ChapterSave {
-  try {
-    const value = JSON.parse(localStorage.getItem(SAVE_KEY) ?? '');
-    if (value?.version === 1 && Number.isInteger(value.survivors)) return value;
-  } catch { /* First visit or an obsolete save. */ }
-  return { version: 1, unlockedChapter: 1, currentChapter: 1, survivors: 24, instar: 1, bodySize: .75, injuries: [] };
-}
-
-export function completeChapterOne(survivors: number) {
-  const save: ChapterSave = {
-    ...readProgress(), unlockedChapter: 2, currentChapter: 2,
-    survivors: Math.max(1, survivors), instar: 3, bodySize: 1.02,
-  };
-  localStorage.setItem(SAVE_KEY, JSON.stringify(save));
-}
-
-const gaps = [
-  { x: 8, y: 15, width: 1.15 }, { x: 3, y: 28, width: .82 },
-  { x: 12, y: 41, width: 1.06 }, { x: 5, y: 55, width: .7 },
-  { x: 10, y: 68, width: 1.12 }, { x: 2, y: 82, width: .76 },
+type ChapterSave = { version:1; unlockedChapter:number; currentChapter:number; survivors:number; instar:number; bodySize:number; injuries:string[] };
+type Gap = { x:number; y:number; width:number; side:-1|1; depth:number };
+type CentipedeState = 'patrol'|'warning'|'chase'|'recover';
+const SAVE_KEY='g-survival-progress-v1';
+const clamp=(v:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,v));
+const gaps:Gap[]=[
+ {x:4,y:15,width:1.15,side:-1,depth:3.2},{x:10,y:28,width:.82,side:1,depth:3.2},
+ {x:4,y:41,width:1.06,side:-1,depth:3.2},{x:10,y:55,width:.7,side:1,depth:3.2},
+ {x:4,y:68,width:1.12,side:-1,depth:3.2},{x:10,y:82,width:.76,side:1,depth:3.2},
 ];
 
-export function mountChapterTwo() {
-  const save = readProgress();
-  if (!location.search.includes('from=chapter1') && save.unlockedChapter < 2) {
-    save.survivors = 8; save.instar = 3; save.bodySize = 1.02;
-  }
-  document.title = 'G-survival — 第2章 壁の中';
-  document.querySelector('#app')!.innerHTML = `<canvas id="shaft"></canvas>
-    <header><span class="mark">G-survival <small>— 隙間の生 —</small></span><span class="chapter">CHAPTER 02 / 壁の中</span></header>
-    <div id="entry"><div class="eyebrow">LATE SUMMER / THIRD INSTAR</div><h1>壁の中</h1>
-    <p class="story">白い帯は、いつの間にか薄くなった。<br>身体は大きくなり、昨日までの隙間に、胸が触れる。</p>
-    <p class="goal"><b>下へ。</b><br>壁の中を、一階分だけ降りる。<br>狭い隙間は、立ち止まって触角で測る。</p>
-    <button id="begin">壁の中へ入る <span>↓</span></button><small>この壁へ入った群れ: ${save.survivors}匹</small></div>
-    <aside id="hud"><div id="population">${save.survivors} 匹</div><div id="objective">断熱材の層</div></aside>
-    <div id="warning"></div><div id="controls">WASD / 矢印：這う　·　Shift：走る　·　左長押し：隙間を測る</div>
-    <div id="ending" hidden><div class="eyebrow">CHAPTER 02 / FOUNDATION</div><h2>床下の冷たさ</h2><p>キッチンの床板が、遠くで鳴った。</p><button id="again">もう一度、壁の中へ ↗</button></div>
-    <footer><span>PERIPLANETA FULIGINOSA</span><span>02 — IN THE WALL</span></footer>`;
+export function readProgress():ChapterSave{try{const v=JSON.parse(localStorage.getItem(SAVE_KEY)??'');if(v?.version===1&&Number.isInteger(v.survivors))return v;}catch{}return{version:1,unlockedChapter:1,currentChapter:1,survivors:24,instar:1,bodySize:.75,injuries:[]};}
+export function completeChapterOne(survivors:number){const s:ChapterSave={...readProgress(),unlockedChapter:2,currentChapter:2,survivors:Math.max(1,survivors),instar:3,bodySize:1.02};localStorage.setItem(SAVE_KEY,JSON.stringify(s));}
 
-  const canvas = document.querySelector<HTMLCanvasElement>('#shaft')!;
-  const ctx = canvas.getContext('2d')!;
-  const keys = new Set<string>();
-  let started = false, ended = false, probe = false, last = performance.now();
-  const player = { x: 7, y: 3 };
-  const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight; };
-  addEventListener('resize', resize); resize();
-  addEventListener('keydown', event => { if (/^(Key[WASD]|Arrow|Shift)/.test(event.code)) event.preventDefault(); keys.add(event.code); });
-  addEventListener('keyup', event => keys.delete(event.code));
-  addEventListener('pointerdown', event => { if (event.button === 0) probe = true; });
-  addEventListener('pointerup', () => { probe = false; });
-  document.querySelector<HTMLButtonElement>('#begin')!.onclick = () => { started = true; document.querySelector('#entry')!.classList.add('gone'); };
-  document.querySelector<HTMLButtonElement>('#again')!.onclick = () => location.reload();
-  if (import.meta.env.DEV && new URLSearchParams(location.search).has('test')) Object.assign(window, { chapter2Test: { setPosition(x: number, y: number) { player.x = x; player.y = y; } } });
-
-  function draw(now: number) {
-    const scale = Math.min(canvas.width / 15, canvas.height / 18);
-    const ox = canvas.width / 2 - player.x * scale, oy = canvas.height * .25 - player.y * scale;
-    ctx.fillStyle = '#111317'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#3d322d'; ctx.fillRect(ox, oy, 15 * scale, 98 * scale);
-    ctx.fillStyle = '#77645a'; for (let y = 8; y < 96; y += 9) ctx.fillRect(ox, oy + y * scale, 15 * scale, .22 * scale);
-    ctx.strokeStyle = '#252a29'; ctx.lineWidth = Math.max(2, scale * .12); ctx.beginPath(); ctx.moveTo(ox + 3 * scale, oy); ctx.bezierCurveTo(ox + 11 * scale, oy + 25 * scale, ox + 2 * scale, oy + 55 * scale, ox + 10 * scale, oy + 98 * scale); ctx.stroke();
-    gaps.forEach(gap => { ctx.fillStyle = gap.width < save.bodySize ? '#231d1a' : '#17251f'; ctx.fillRect(ox + (gap.x - 1) * scale, oy + (gap.y - .45) * scale, 2 * scale, .9 * scale); });
-    const centipedeY = 34 + (now / 1000 * 2.1 % 22); ctx.fillStyle = '#9b6f4e';
-    for (let n = 0; n < 12; n++) ctx.fillRect(ox + (7 + Math.sin(n * .7) * .5) * scale, oy + (centipedeY + n * .34) * scale, .42 * scale, .24 * scale);
-    ctx.fillStyle = '#d1c3a3'; ctx.beginPath(); ctx.ellipse(ox + player.x * scale, oy + player.y * scale, .38 * scale, .62 * scale, 0, 0, Math.PI * 2); ctx.fill();
-  }
-
-  function frame(now: number) {
-    const dt = Math.min(.05, (now - last) / 1000); last = now;
-    if (started && !ended) {
-      const dx = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
-      const dy = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0);
-      const speed = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 6 : 3) * dt;
-      player.x = clamp(player.x + dx * speed, .4, 13.6); player.y = clamp(player.y + dy * speed, 1, 92);
-      const gap = gaps.find(item => Math.abs(player.y - item.y) < .65 && Math.abs(player.x - item.x) < 1.1);
-      const tooNarrow = !!gap && gap.width < save.bodySize;
-      if (tooNarrow && dy > 0) player.y = gap!.y - .66;
-      const centipedeY = 34 + (now / 1000 * 2.1 % 22), danger = Math.abs(centipedeY - player.y) < 4 && player.x > 5;
-      document.querySelector('#warning')!.textContent = tooNarrow ? '胸が擦れる。ここはもう通れない。' : danger ? '脚の影が、壁を横切る。' : probe && gap ? (gap.width >= save.bodySize ? '触角の先に、抜け道がある。' : '触角が、奥で戻ってきた。') : '';
-      document.querySelector('#objective')!.textContent = player.y < 28 ? '配線と間柱のシャフト' : player.y < 58 ? '湿った配管の分岐' : player.y < 82 ? '巾木の裏' : 'キッチンの床下';
-      if (player.y >= 91) { ended = true; document.querySelector('#ending')!.removeAttribute('hidden'); }
-    }
-    draw(now); requestAnimationFrame(frame);
-  }
-  requestAnimationFrame(frame);
+export async function mountChapterTwo(){
+ const save=readProgress();if(!location.search.includes('from=chapter1')&&save.unlockedChapter<2){save.survivors=8;save.instar=3;save.bodySize=1.02;}
+ document.title='G-survival — 第2章 壁の中';document.querySelector('#app')!.innerHTML=`<canvas id="shaft"></canvas><div class="vignette"></div><header><span class="mark">G-survival <small>— 隙間の生 —</small></span><span class="chapter">CHAPTER 02 / 壁の中</span></header><div id="entry"><div class="eyebrow">LATE SUMMER / THIRD INSTAR</div><h1>壁の中</h1><p class="story">白い帯は、いつの間にか薄くなった。<br>身体は大きくなり、昨日までの隙間に、胸が触れる。</p><p class="goal"><b>下へ。</b><br>壁の中を、一階分だけ降りる。<br>兄弟の気配は遠ざかり、脚の多い影が近づく。</p><button id="begin" disabled>壁の中を読み込み中…</button><small>この壁へ入った群れ: ${save.survivors}匹</small></div><aside id="hud"><div id="population">${save.survivors} 匹</div><div id="objective">断熱材の層</div></aside><div id="warning"></div><div id="controls">WASD / 矢印：這う　·　Shift：走る　·　左長押し：隙間を測る</div><div id="ending" hidden><div class="eyebrow">CHAPTER 02 / FOUNDATION</div><h2></h2><p></p><button id="again">もう一度、壁の中へ ↗</button></div><footer><span>PERIPLANETA FULIGINOSA</span><span>02 — IN THE WALL</span></footer>`;
+ await loadAnimals();
+ const canvas=document.querySelector<HTMLCanvasElement>('#shaft')!,renderer=new THREE.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;
+ const scene=new THREE.Scene();scene.background=new THREE.Color('#0b0e10');scene.fog=new THREE.FogExp2('#0b0e10',.025);scene.add(new THREE.HemisphereLight('#9aa8ae','#261d1a',2.1));
+ const lamp=new THREE.PointLight('#d1aa82',35,18);scene.add(lamp);const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,180);
+ const wallMat=new THREE.MeshStandardMaterial({color:'#493b35',roughness:.92}),timber=new THREE.MeshStandardMaterial({color:'#715b4d',roughness:.88}),voidMat=new THREE.MeshStandardMaterial({color:'#11191a',roughness:1}),copper=new THREE.MeshStandardMaterial({color:'#835b45',roughness:.55,metalness:.25});
+ function box(x:number,y:number,z:number,w:number,h:number,d:number,mat:THREE.Material){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,-y,z);m.castShadow=m.receiveShadow=true;scene.add(m);return m;}
+ box(7,48,-.55,15,98,1,wallMat);for(const x of [1,7,13])box(x,48,.25,.55,98,.55,timber);for(let y=8;y<96;y+=9)box(7,y,.18,15,.3,.5,timber);
+ for(const gap of gaps){const cx=gap.side<0?gap.x-gap.depth/2:gap.x+gap.depth/2;box(cx,gap.y,.3,gap.depth,gap.width,.85,voidMat);box(cx,gap.y-gap.width/2-.18,.55,gap.depth,.22,.55,timber);box(cx,gap.y+gap.width/2+.18,.55,gap.depth,.22,.55,timber);}
+ const pipe=new THREE.Mesh(new THREE.CylinderGeometry(.25,.25,98,12),copper);pipe.position.set(11,-48,.7);scene.add(pipe);
+ const hero=createAnimal('roach',save.bodySize);scene.add(hero);
+ const centipede=new THREE.Group(),segments:THREE.Mesh[]=[];const centMat=new THREE.MeshStandardMaterial({color:'#a66f43',roughness:.65});
+ for(let n=0;n<14;n++){const segment=new THREE.Mesh(new THREE.SphereGeometry(.24,10,6),centMat);segment.scale.set(1.25,.72,.55);centipede.add(segment);segments.push(segment);for(const side of [-1,1]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.48,4),centMat);leg.rotation.z=Math.PI/2.7*side;leg.position.set(side*.28,0,0);segment.add(leg);}}scene.add(centipede);
+ const keys=new Set<string>();let started=false,ended=false,probe=false,last=performance.now(),survivors=save.survivors,invulnerable=0,lossNotice=0;const player={x:7,y:3,angle:Math.PI/2};const checkpoint={x:7,y:3};const enemy={x:7,y:34,state:'patrol' as CentipedeState,timer:0,targetY:34};
+ addEventListener('keydown',e=>{if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight'].includes(e.code))e.preventDefault();keys.add(e.code);});addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',()=>keys.clear());addEventListener('pointerdown',e=>{if(e.button===0&&!(e.target as HTMLElement).closest('button'))probe=true;});addEventListener('pointerup',()=>probe=false);
+ const resize=()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();};addEventListener('resize',resize);resize();
+ const begin=document.querySelector<HTMLButtonElement>('#begin')!;begin.disabled=false;begin.innerHTML='壁の中へ入る <span>↓</span>';begin.onclick=()=>{started=true;document.querySelector('#entry')!.classList.add('gone');};document.querySelector<HTMLButtonElement>('#again')!.onclick=()=>location.reload();
+ const nearGap=()=>gaps.find(g=>Math.abs(player.y-g.y)<g.width*.5+.18&&Math.abs(player.x-g.x)<g.depth+.5);
+ const sheltered=()=>{const g=nearGap();return !!g&&g.width>=save.bodySize&&(g.side<0?player.x<3.8:player.x>10.2);};
+ function move(dt:number){const dx=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0),dy=(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-(keys.has('KeyW')||keys.has('ArrowUp')?1:0),len=Math.hypot(dx,dy);if(!len)return 0;const speed=(keys.has('ShiftLeft')||keys.has('ShiftRight')?3.6:2.6),step=speed*dt,nx=dx/len,ny=dy/len;let nextX=player.x+nx*step,nextY=clamp(player.y+ny*step,1,92);const gate=gaps.find(g=>Math.abs(nextY-g.y)<g.width*.5+.18&&((g.side<0&&nextX<4)||(g.side>0&&nextX>10)));if(nextX<4||nextX>10){if(!gate||gate.width<save.bodySize)nextX=clamp(nextX,4,10);else nextX=clamp(nextX,gate.side<0?4-gate.depth:4,gate.side>0?10+gate.depth:10);}player.x=nextX;player.y=nextY;player.angle=Math.atan2(ny,nx);return speed;}
+ function updateEnemy(dt:number){enemy.timer+=dt;if(enemy.state==='patrol'){enemy.y=34+(1-Math.abs((enemy.timer*2.1%44)-22));if(Math.abs(enemy.y-player.y)<6&&!sheltered()){enemy.state='warning';enemy.timer=0;enemy.targetY=player.y;}}else if(enemy.state==='warning'){if(sheltered()){enemy.state='recover';enemy.timer=0;}else if(enemy.timer>=.6){enemy.state='chase';enemy.timer=0;}}else if(enemy.state==='chase'){if(sheltered()){enemy.state='recover';enemy.timer=0;}else{enemy.y+=Math.sign(player.y-enemy.y)*3.8*dt;if(Math.abs(enemy.y-player.y)<.75&&Math.abs(player.x-7)<3.2&&invulnerable<=0){survivors--;lossNotice=2.5;invulnerable=1.2;player.x=checkpoint.x;player.y=checkpoint.y;enemy.state='recover';enemy.timer=0;if(survivors<=0)finish(false);}}}else if(enemy.timer>=1.6){enemy.state='patrol';enemy.timer=0;}}
+ function finish(won:boolean){ended=true;const end=document.querySelector<HTMLElement>('#ending')!;end.hidden=false;end.querySelector('h2')!.textContent=won?'床下の冷たさ':'脚音だけが残った';end.querySelector('p')!.textContent=won?'キッチンの床板が、遠くで鳴った。':'Gの群れは、壁の途中で途絶えた。';}
+ function render(now:number,speed:number){hero.position.set(player.x,-player.y,.72);hero.rotation.z=player.angle-Math.PI/2;animateAnimal(hero,now/1000,speed,player.angle);segments.forEach((s,n)=>s.position.set(Math.sin(now*.004-n*.45)*.28,n*.28,0));centipede.position.set(enemy.x,-enemy.y,.75);centipede.rotation.z=Math.PI;camera.position.set(7,-player.y+2.2,17);camera.lookAt(7,-player.y-2,0);lamp.position.set(player.x,-player.y+1,4);renderer.render(scene,camera);}
+ function frame(now:number){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last)/1000);last=now;let speed=0;if(started&&!ended){invulnerable=Math.max(0,invulnerable-dt);lossNotice=Math.max(0,lossNotice-dt);speed=move(dt);if(player.y>12)checkpoint.y=Math.max(checkpoint.y,Math.floor(player.y/18)*18);updateEnemy(dt);if(player.y>=91)finish(true);const gap=nearGap(),tooNarrow=!!gap&&gap.width<save.bodySize,danger=enemy.state==='warning'||enemy.state==='chase';document.querySelector('#warning')!.textContent=lossNotice>0?'Gが1体、減りました':tooNarrow?'胸が擦れる。ここはもう通れない。':danger?(enemy.state==='warning'?'粉塵が、下から浮いた。':'脚の波が、追ってくる。'):probe&&gap?(gap.width>=save.bodySize?'触角の先に、身体を隠せる奥行きがある。':'触角が、奥で戻ってきた。'):'';document.querySelector('#population')!.textContent=survivors+' 匹';document.querySelector('#objective')!.textContent=player.y<28?'配線と間柱のシャフト':player.y<58?'湿った配管の分岐':player.y<82?'巾木の裏':'キッチンの床下';}render(now,speed);}
+ if(import.meta.env.DEV&&new URLSearchParams(location.search).has('test'))Object.assign(window,{chapter2Test:{setPosition(x:number,y:number){player.x=x;player.y=y;},snapshot(){return{...player,survivors,enemy:{...enemy},sheltered:sheltered()};},setEnemy(state:CentipedeState,y:number,timer=0){enemy.state=state;enemy.y=y;enemy.timer=timer;}}});requestAnimationFrame(frame);
 }
