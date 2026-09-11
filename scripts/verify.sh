@@ -17,6 +17,7 @@ run() {
 run "build (tsc --noEmit + vite build)" npm run build
 run "smoke.mjs" node --experimental-strip-types smoke.mjs
 run "playthrough.mjs --probe" node --experimental-strip-types playthrough.mjs --probe
+run "chapter2-maze-check.mjs" node --experimental-strip-types chapter2-maze-check.mjs
 
 echo ""
 echo "===== browser-audit.mjs ====="
