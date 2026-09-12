@@ -30,19 +30,19 @@ console.log('[凡例の個数]');
 const n=counts();
 check(n['S']===1,`S = ${n['S']??0} (=1)`);
 check(n['G']===1,`G = ${n['G']??0} (=1)`);
-check(n['M']===1,`M = ${n['M']??0} (=1)`);
+check(!n['M'],`M = ${n['M']??0} (=0)`);
 check((n['c']??0)>=1,`c = ${n['c']??0} (>=1)`);
 check((n['g']??0)>=1,`g = ${n['g']??0} (>=1)`);
 check((n['y']??0)>=1,`y = ${n['y']??0} (>=1)`);
 
 
 console.log('[ガクチョ指定の配置・巡回]');
-for(const [address,ch] of Object.entries({B07:'1',B18:'M',C18:'2',D18:'2',E18:'2',I18:'~',D27:'1',D28:'1',J27:'2',J28:'2'}))check(at(Number(address.slice(1))-1,address.charCodeAt(0)-65)===ch,address+'='+ch);
+for(const [address,ch] of Object.entries({B07:'1',B18:'o',F21:'v',I21:'v',G25:'v',C18:'2',D18:'2',E18:'2',I18:'~',D27:'1',D28:'1',J27:'2',J28:'2'}))check(at(Number(address.slice(1))-1,address.charCodeAt(0)-65)===ch,address+'='+ch);
 check(maze.centipedes.length===3&&maze.gejis.length===2&&maze.lairs.length===2,'敵: ムカデ3 / ゲジ2 / ヤモリ2');
 check([...Array(7)].every((_,i)=>at(21,3+i)==='g'),'D22〜J22 ゲジ');
 check(MAP.slice(28,40).every(row=>[...row.slice(1,13)].every(ch=>'.~y'.includes(ch))),'B29〜M40 一室、断熱材と巣のみ');
 for(const track of maze.centipedes){check(track.path.every((p,i)=>!blockedAt(p.x,p.y,.4,'enemy')&&(!i||Math.abs(p.r-track.path[i-1].r)+Math.abs(p.c-track.path[i-1].c)===1)),track.id+' 巡回全点は敵通行可能、4近傍で連続');}
-for(const size of [1.02,1.2])for(const [a,b] of [[maze.start,maze.goal],[maze.start,maze.molt],[maze.molt,maze.goal]])check(reachable(size,a,b).path.every(p=>!blockedAt(p.x,p.y,size/2)),size+' 経路中心は身体半径でも通行可能');
+for(const size of [1.02,1.2])for(const [a,b] of [[maze.start,maze.goal],[maze.start,maze.molt],[maze.molt,maze.goal]])check(reachable(size,a,b).path.every((p,i,path)=>{const prev=path[Math.max(0,i-1)];return Array.from({length:21},(_,k)=>k/20).every(t=>!blockedAt(prev.x+(p.x-prev.x)*t,prev.y+(p.y-prev.y)*t,size/2));}),size+' 経路の中心とセル間も身体半径で通行可能');
 
 console.log('[格子仕様]');
 check(MAP.length===46,`行数 = ${MAP.length} (=46)`);

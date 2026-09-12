@@ -1,0 +1,15 @@
+import {chromium} from '@playwright/test';
+import {writeFile} from 'node:fs/promises';
+const b=await chromium.launch({headless:true}),p=await b.newPage({viewport:{width:1280,height:800}}),errors=[];p.on('pageerror',e=>errors.push(e.message));const check=(v,m)=>{if(!v)throw Error(m);};
+try{
+ await p.goto('http://127.0.0.1:5173/?test=1',{waitUntil:'networkidle'});await p.waitForFunction(()=>window.gameTest);
+ const r=await p.evaluate(async()=>{const {createAnimal,animateAnimal}=await import('/src/animals.ts'),a=createAnimal('roach'),b=createAnimal('roach');a.userData.instar=b.userData.instar=3;
+  animateAnimal(a,0,0,0);animateAnimal(b,0,0,0);const legs=a.userData.third.children.filter(o=>o.name.startsWith('leg')),other=b.userData.third.children.filter(o=>o.name.startsWith('leg'));
+  for(let i=1;i<12;i++)animateAnimal(a,i*.02,1,0);const moving=legs.some(l=>Math.abs(l.rotation.z)>.01),independent=other.every(l=>l.rotation.z===0);animateAnimal(a,.3,0,0);const stopped=legs.every(l=>l.rotation.z===0&&l.rotation.x===0);
+  const hero=window.gameTest.models.hero;window.gameTest.start();const g=window.gameTest.state;g.molting=true;g.moltProgress=.5;
+  return {legs:legs.length,antennae:a.userData.third.children.filter(o=>o.name.startsWith('antenna')).length,moving,independent,stopped,meshes:a.userData.third.children.reduce((n,o)=>n+o.children.length,0),heroBefore:hero.userData.instar};});
+ check(r.legs===6&&r.antennae===2&&r.moving&&r.independent&&r.stopped,'third rig '+JSON.stringify(r));
+ await p.waitForTimeout(300);r.molt=await p.evaluate(()=>{const h=window.gameTest.models.hero;let white=0;h.userData.third.traverse(o=>{if(o.isMesh)white=Math.max(white,o.material.color.r)});return {instar:h.userData.instar,visible:h.userData.third.visible,white};});check(r.molt.instar===3&&r.molt.visible&&r.molt.white>.8,'white third instar');await p.screenshot({path:'artifacts/third-instar-ch1-molt.png'});
+ await p.evaluate(()=>{window.gameTest.state.moltProgress=1;window.gameTest.state.state='won';});await p.waitForTimeout(300);r.hardened=await p.evaluate(()=>{const h=window.gameTest.models.hero;return h.userData.third.visible&&h.userData.instar===3;});check(r.hardened,'third instar missing on completion');await p.screenshot({path:'artifacts/third-instar-ch1-complete.png'});
+ await p.goto('http://127.0.0.1:5173/?test=1',{waitUntil:'networkidle'});await p.waitForFunction(()=>window.gameTest);await p.evaluate(()=>{window.gameTest.start();window.gameTest.state.moltProgress=.5;window.gameTest.state.molting=true;});await p.waitForTimeout(200);await p.evaluate(()=>{window.gameTest.state.state='lost';});await p.locator('#again').click();await p.waitForTimeout(200);r.reset=await p.evaluate(()=>{const h=window.gameTest.models.hero;return h.userData.instar===1&&!h.userData.third.visible&&h.userData.young.visible;});check(r.reset,'restart did not restore first instar');check(!errors.length,errors.join('\n'));r.errors=errors;await writeFile('artifacts/third-instar-audit.json',JSON.stringify(r,null,2));console.log('PASS third instar',JSON.stringify(r));
+}finally{await b.close();}

@@ -1,0 +1,46 @@
+{
+  "loaded": true,
+  "aligned": true,
+  "onBoard": true,
+  "visible": true,
+  "maxSkate": 3.429679885811959e-8,
+  "walked": 0.7619999999999809,
+  "samples": [
+    {
+      "index": 0,
+      "lane": {
+        "y": 51,
+        "xLeft": 9,
+        "xRight": 21,
+        "offset": 0,
+        "exposure": 0.2240000000000001,
+        "phase": 2.3240000000000003,
+        "x": 9,
+        "direction": 1,
+        "heading": 2.8064894372068814,
+        "turn": 0.8039999999999999
+      },
+      "feet": 30,
+      "visible": true
+    },
+    {
+      "index": 1,
+      "lane": {
+        "y": 43,
+        "xLeft": 9,
+        "xRight": 21,
+        "offset": 5,
+        "exposure": 0.2400000000000001,
+        "phase": 2.34,
+        "x": 9.670799999999929,
+        "direction": -1,
+        "heading": 3.141592653589793,
+        "turn": 0
+      },
+      "feet": 30,
+      "visible": true
+    }
+  ],
+  "errors": [],
+  "failed": []
+}

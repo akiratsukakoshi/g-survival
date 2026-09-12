@@ -23,28 +23,28 @@ export const MAP:string[]=[
  '#####c#####.##',
  '###o2c###...##',
  '#####c###.####',
- '#M222c#.~...##',
+ '#o222c#.~...##',
  '###########.##',
  '#...........##',
- '#.############',
+ '#.###v##v#####',
  '#..ggggggg..##',
  '#########.####',
  '###.......####',
- '###.##########',
+ '###.##v#######',
  '###ggggggg.o##',
  '###1#####2####',
  '#..1.....2####',
  '#............#',
- '#....~~......#',
- '#..y.....~...#',
  '#............#',
- '#~~..........#',
- '#.....~~.....#',
+ '#............#',
+ '#............#',
  '#.........y..#',
- '#..........~~#',
- '#..~~........#',
  '#............#',
- '#......~~....#',
+ '#............#',
+ '#..y.........#',
+ '#............#',
+ '#............#',
+ '#............#',
  '#............#',
  '#########.####',
  '#...........##',
@@ -59,7 +59,7 @@ export type Ref={r:number;c:number;ch:string;x:number;y:number};
 export type Slit=Ref&{width:number;axis:'v'|'h'};
 export type Rect={x:number;y:number;w:number;h:number};
 export const at=(r:number,c:number)=>r<0||c<0||r>=ROWS||c>=COLS?'#':MAP[r][c];
-export const centerOf=(r:number,c:number):Pt=>({x:ORIGIN_X+c*CELL+CELL/2,y:r*CELL+CELL/2});
+export const centerOf=(r:number,c:number):Pt=>({x:ORIGIN_X+c*CELL+CELL/2,y:r*CELL+CELL/2+(at(r,c)==='v'?.375:0)});
 export const cellOf=(x:number,y:number)=>({r:Math.floor(y/CELL),c:Math.floor((x-ORIGIN_X)/CELL)});
 export const chAt=(x:number,y:number)=>{const k=cellOf(x,y);return at(k.r,k.c);};
 // 隙間のスリットは通路側の隣接に合わせる。上下が通路なら縦のスリット(柱は左右)。
@@ -80,13 +80,13 @@ function build(){
   if(path.some(p=>blockedAt(p.x,p.y,.4,'enemy')))throw Error('Blocked patrol: '+id);return {id,path};};
  const centipedes=[track('shaft',['F10','F18']),track('upper',['E08','L08','L06','I06']),track('east',['K18','J18','J16','L16','L14','J14','J12'])];
  const gejis=[...new Set(gs.map(p=>p.r))].sort((a,b)=>b-a).map(r=>{const row=gs.filter(p=>p.r===r);return {y:row[0].y,xLeft:Math.min(...row.map(p=>p.x)),xRight:Math.max(...row.map(p=>p.x))};});
- return {rows:ROWS,cols:COLS,cell:CELL,start:one('S'),goal:one('G'),molt:one('M'),lair:one('y'),
+ return {rows:ROWS,cols:COLS,cell:CELL,start:one('S'),goal:one('G'),molt:{r:17,c:1,ch:'o',...centerOf(17,1)},lair:one('y'),
   centipedes,gejis,lairs:refs(k=>k==='y'),
-  pockets:refs(k=>k==='o'||k==='M'),
+  pockets:refs(k=>k==='o'||k==='M'||k==='v'),
   slits:refs(k=>SLIT_W[k]!==undefined).map(s=>({...s,width:SLIT_W[s.ch],axis:axisOf(s.r,s.c)}) as Slit),
   centipede:{x:cs[0].x,yTop:Math.min(...cs.map(k=>k.y)),yBottom:Math.max(...cs.map(k=>k.y))},
   geji:gejis[0],
-  walls:rects(ch=>ch==='#'),mounds:rects(ch=>ch==='~')};
+  walls:[...rects(ch=>ch==='#'),...refs(k=>k==='v').map(p=>({x:ORIGIN_X+p.c*CELL,y:p.r*CELL,w:CELL,h:.75}))],mounds:rects(ch=>ch==='~')};
 }
 let cached:ReturnType<typeof build>|undefined;
 export const parseMaze=()=>cached??=build();
@@ -96,6 +96,7 @@ export function blockedAt(x:number,y:number,r=.35,who:'player'|'enemy'='player',
  const c0=Math.floor((x-ORIGIN_X-r)/CELL),c1=Math.floor((x-ORIGIN_X+r)/CELL),r0=Math.floor((y-r)/CELL),r1=Math.floor((y+r)/CELL);
  for(let rr=r0;rr<=r1;rr++)for(let cc=c0;cc<=c1;cc++){const ch=at(rr,cc),x0=ORIGIN_X+cc*CELL,y0=rr*CELL,x1=x0+CELL,y1=y0+CELL;
   if(ch==='#'||(who==='enemy'&&ch==='~')){if(near(x,y,r,x0,y0,x1,y1))return true;continue;}
+  if(ch==='v'){if(near(x,y,r,x0,y0,x1,who==='enemy'?y1:y0+.75))return true;continue;}
   if(ch==='o'||ch==='M'){if(who==='enemy'&&near(x,y,r,x0,y0,x1,y1))return true;continue;}
   const w=SLIT_W[ch];if(w===undefined)continue;
   if(who==='enemy'){if(near(x,y,r,x0,y0,x1,y1))return true;continue;}
@@ -113,12 +114,12 @@ export function reachable(bodySize:number,from?:{r:number;c:number},to?:{r:numbe
  const m=parseMaze(),s=from??m.start,t=to??m.goal,key=(r:number,c:number)=>r*COLS+c;
  const prev=new Map<number,number>([[key(s.r,s.c),-1]]),queue=[key(s.r,s.c)],end=key(t.r,t.c);
  for(let head=0;head<queue.length;head++){const k=queue[head];if(k===end)break;const r=Math.floor(k/COLS),c=k%COLS;
-  for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){const rr=r+dr,cc=c+dc,kk=key(rr,cc);if(prev.has(kk)||!walkable(at(rr,cc),bodySize)||(who==='enemy'&&'12oM~'.includes(at(rr,cc))))continue;prev.set(kk,k);queue.push(kk);}}
+  for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){const rr=r+dr,cc=c+dc,kk=key(rr,cc);if((SLIT_W[at(rr,cc)]!==undefined&&(axisOf(rr,cc)==='v'?dc!==0:dr!==0))||(SLIT_W[at(r,c)]!==undefined&&(axisOf(r,c)==='v'?dc!==0:dr!==0)))continue;if((at(rr,cc)==='v'&&dr!==-1)||(at(r,c)==='v'&&dr!==1))continue;if(prev.has(kk)||!walkable(at(rr,cc),bodySize)||(who==='enemy'&&'12oMv~'.includes(at(rr,cc))))continue;prev.set(kk,k);queue.push(kk);}}
  if(!prev.has(end))return {ok:false,path:[] as Ref[],length:0};
  const path:Ref[]=[];for(let k=end;k!==-1;k=prev.get(k)!){const r=Math.floor(k/COLS),c=k%COLS;path.push({r,c,ch:at(r,c),...centerOf(r,c)});}
  path.reverse();return {ok:true,path,length:path.length};}
 // 通路セルで通路隣接が1つのもの。S/G/o/M は行き止まりとして数えない。
-export function deadEnds(){const out:Ref[]=[];for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const ch=at(r,c);if(ch==='#'||'SGoM'.includes(ch))continue;
+export function deadEnds(){const out:Ref[]=[];for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const ch=at(r,c);if(ch==='#'||'SGoMv'.includes(ch))continue;
  let n=0;for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]])if(at(r+dr,c+dc)!=='#')n++;if(n===1)out.push({r,c,ch,...centerOf(r,c)});}return out;}
 export function counts(){const m:Record<string,number>={};for(const row of MAP)for(const ch of row)m[ch]=(m[ch]??0)+1;return m;}
 export function renderAscii(path?:{r:number;c:number}[]){const g=MAP.map(row=>row.split(''));for(const p of path??[])if(g[p.r][p.c]==='.')g[p.r][p.c]='*';return g.map(row=>row.join('')).join('\n');}

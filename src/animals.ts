@@ -24,6 +24,6 @@ export function createAnimal(kind:'roach'|'spider'|'ant',scale=1){
  legs.forEach(compact);compact(g);g.scale.setScalar(scale);g.userData={legs,feelers,baseScale:scale};return g;
 }
 export function animateAnimal(g:THREE.Group,time:number,speed:number,heading:number,molt=0){
- g.rotation.z=heading;if(g.userData.nymph){animateNymph(g,time,speed);g.scale.setScalar(g.userData.baseScale*(1+molt*.3));return;}const moving=Math.min(1,speed);(g.userData.legs as THREE.Group[]).forEach((l,i)=>{l.rotation.z=Math.sin(time*18+(i%2)*Math.PI+Math.floor(i/2)*Math.PI)*.28*moving;});
+ g.rotation.z=heading;if(g.userData.nymph){if(molt>0)g.userData.instar=molt>=.2?3:1;animateNymph(g,time,speed);g.scale.setScalar(g.userData.baseScale*(1+molt*.3));return;}const moving=Math.min(1,speed);(g.userData.legs as THREE.Group[]).forEach((l,i)=>{l.rotation.z=Math.sin(time*18+(i%2)*Math.PI+Math.floor(i/2)*Math.PI)*.28*moving;});
  (g.userData.feelers as THREE.Group[]).forEach((f,i)=>{f.rotation.z=Math.sin(time*2.8+i*2)*.12;});g.scale.setScalar(g.userData.baseScale*(1+molt*.3));
 }

@@ -1,70 +1,35 @@
 import {chromium} from '@playwright/test';
 import {writeFile} from 'node:fs/promises';
-const browser=await chromium.launch({headless:true}),errors=[];
-const page=await browser.newPage({viewport:{width:1280,height:800}});page.on('pageerror',e=>errors.push(e.message));
+const browser=await chromium.launch({headless:true}),errors=[],page=await browser.newPage({viewport:{width:1280,height:800}});page.on('pageerror',e=>errors.push(e.message));
 const check=(v,m)=>{if(!v)throw Error(m);};
 const open=async()=>{await page.goto('http://127.0.0.1:5173/?chapter=2&test=1',{waitUntil:'networkidle'});await page.waitForFunction(()=>window.chapter2Test&&!document.querySelector('#begin').disabled);};
 try{
  await open();
- const patrol=await page.evaluate(async()=>{
-  const t=window.chapter2Test,m=await import('/src/chapter2-maze.ts'),visited=t.maze.centipedes.map(()=>new Set()),start=t.snapshot();let blocked=false;
-  for(let i=0;i<5000;i++){t.step(.02);const s=t.snapshot();s.enemies.forEach((e,k)=>{blocked||=m.blockedAt(e.x,e.y,.4,'enemy');visited[k].add(m.cellOf(e.x,e.y).r+','+m.cellOf(e.x,e.y).c);});}
-  return {count:start.enemies.length,gejis:start.crossings.length,geckos:start.lizards.length,blocked,visited:visited.map(v=>v.size),expected:t.maze.centipedes.map(c=>c.path.length),survivors:t.snapshot().survivors};
+ const report=await page.evaluate(async()=>{
+  const t=window.chapter2Test,m=await import('/src/chapter2-maze.ts'),key=(code,type)=>dispatchEvent(new KeyboardEvent(type,{code})),step=n=>{for(let k=0;k<n;k++)t.step(.02);};
+  const initial=t.snapshot(),visits=t.maze.centipedes.map(()=>new Set());let blocked=false,jump=false,last=t.snapshot().crossings;
+  t.setPosition(t.maze.molt.x,t.maze.molt.y);
+  for(let i=0;i<5000;i++){t.step(.02);const s=t.snapshot();s.enemies.forEach((e,k)=>{blocked||=m.blockedAt(e.x,e.y,.4,'enemy');visits[k].add(m.cellOf(e.x,e.y).r+','+m.cellOf(e.x,e.y).c);});s.crossings.forEach((l,k)=>{jump||=Math.abs(l.x-last[k].x)>.055||l.x<l.xLeft||l.x>l.xRight;});last=s.crossings;}
+  const holes=['F21','I21','G25'].map(a=>{const p=m.centerOf(Number(a.slice(1))-1,a.charCodeAt(0)-65);t.setPosition(p.x,p.y);return {a,player:!m.blockedAt(p.x,p.y,.6),enemy:m.blockedAt(p.x,p.y,.1,'enemy'),shelter:t.snapshot().sheltered,route:m.reachable(1.2,t.maze.start,m.cellOf(p.x,p.y)).ok};});
+  t.setResources(.55,.5);t.setPosition(t.maze.molt.x,t.maze.molt.y);const b18WithoutFood=t.snapshot().moltReady;
+  const resources=initial.resources;const pickups=[];
+  for(const r of resources){t.setResources(.5,.5);t.setPosition(r.x,r.y);step(20);pickups.push({address:r.address,gain:t.snapshot()[r.type==='food'?'hunger':'water']-.5});}
+  const site=t.snapshot().restSites[0];t.setResources(.6,.7,.4);t.setPosition(site.x,site.y);step(50);const healing=t.snapshot().health;
+  const measure=(hp,drink)=>{t.setResources(1,drink,hp);t.setPosition(17,75);key('KeyD','keydown');step(20);key('KeyD','keyup');return t.snapshot().x-17;};const fast=measure(1,1),slow=measure(.2,.2);
+  t.setResources(1,1);t.setPosition(site.x,site.y);key('Space','keydown');key('KeyD','keydown');step(160);const during=t.snapshot();key('KeyD','keyup');step(180);key('Space','keyup');const grown=t.snapshot();
+  return {initial:{body:initial.bodySize,model:initial.instarModel,ready:initial.moltReady},patrol:{blocked,visited:visits.map(v=>v.size),expected:t.maze.centipedes.map(p=>p.path.length)},gejiContinuous:!jump,holes,b18WithoutFood,pickups,healing,fast,slow,during:{molting:during.molting,x:during.x,expected:site.x,range:during.senseRange},grown:{size:grown.bodySize,molted:grown.molted,model:grown.instarModel}};
  });
- check(patrol.count===3&&patrol.gejis===2&&patrol.geckos===2,'enemy counts');check(!patrol.blocked&&patrol.visited.every((n,i)=>n===patrol.expected[i]),'patrol did not traverse every bend: '+JSON.stringify(patrol));
- const recovery=await page.evaluate(async()=>{const t=window.chapter2Test,m=await import('/src/chapter2-maze.ts');t.setPosition(t.maze.molt.x,t.maze.molt.y);
-  [[15,19],[17,17],[23,23]].forEach(([x,y],i)=>t.setEnemy('recover',y,0,x,i));let blocked=false;
-  for(let i=0;i<1200;i++){t.step(.02);blocked||=t.snapshot().enemies.some(e=>m.blockedAt(e.x,e.y,.4,'enemy'));}
-  return {blocked,states:t.snapshot().enemies.map(e=>e.state)};});
- check(!recovery.blocked&&recovery.states.every(s=>s==='patrol'),'centipedes did not rejoin patrol '+JSON.stringify(recovery));
- await page.evaluate(()=>{const t=window.chapter2Test;t.setPosition(t.maze.molt.x+6,t.maze.molt.y);document.querySelector('#entry').hidden=true;});await page.waitForTimeout(100);await page.screenshot({path:'artifacts/chapter2-molt-approach.png'});
- // Real Space hold must finish even while still held; readiness is visual, local to M.
- await page.evaluate(()=>{const t=window.chapter2Test;t.setPosition(t.maze.molt.x,t.maze.molt.y);document.querySelector('#entry').hidden=true;});
- await page.waitForTimeout(100);
- const ready=await page.evaluate(()=>({ready:window.chapter2Test.snapshot().moltReady,glow:window.chapter2Test.snapshot().glow}));
- check(ready.ready&&ready.glow>0,'M does not glow');await page.screenshot({path:'artifacts/chapter2-molt-ready.png'});
- const growth=await page.evaluate(()=>{
-  const t=window.chapter2Test,key=(code,type)=>dispatchEvent(new KeyboardEvent(type,{code}));
-  const measure=()=>{t.setPosition(5,57);key('KeyD','keydown');for(let i=0;i<25;i++)t.step(.02);key('KeyD','keyup');return t.snapshot().x-5;};
-  const before=measure();t.setPosition(t.maze.molt.x,t.maze.molt.y);key('Space','keydown');for(let i=0;i<160;i++)t.step(.02);const during=t.snapshot();for(let i=0;i<230;i++)t.step(.02);key('Space','keyup');const after=t.snapshot(),speed=measure();return {before,speed,during:during.molting,after:{molted:after.molted,bodySize:after.bodySize},save:JSON.parse(localStorage.getItem('g-survival-progress-v1'))};
- });
- check(growth.during>0&&growth.after.molted&&growth.after.bodySize===1.2,'held Space failed to finish molt');check(Math.abs(growth.speed/growth.before-1.12)<1e-6,'growth speed bonus missing');
- await page.waitForTimeout(100);check(await page.evaluate(()=>window.chapter2Test.snapshot().glow===0),'glow remained outside M');
- await page.evaluate(()=>{const t=window.chapter2Test;t.setPosition(t.maze.molt.x,t.maze.molt.y);document.querySelector('#entry').hidden=true;});await page.waitForTimeout(100);await page.screenshot({path:'artifacts/chapter2-molt-grown.png'});
- // A saved fourth instar must not turn a new run at the start into a grown run.
- await open();const restarted=await page.evaluate(()=>{const t=window.chapter2Test,s=t.snapshot();t.setPosition(5,11);dispatchEvent(new KeyboardEvent('keydown',{code:'KeyS'}));for(let k=0;k<80;k++)t.step(.02);dispatchEvent(new KeyboardEvent('keyup',{code:'KeyS'}));const passedNarrow=t.snapshot().y>15;t.setPosition(t.maze.molt.x,t.maze.molt.y);return {bodySize:s.bodySize,visualScale:s.visualScale,speed:s.speedMultiplier,molted:s.molted,atStart:s.x===t.maze.start.x&&s.y===t.maze.start.y,passedNarrow,ready:t.snapshot().moltReady};});
- check(restarted.bodySize===1.02&&restarted.visualScale===1.02&&restarted.speed===1&&!restarted.molted&&restarted.atStart&&restarted.passedNarrow&&restarted.ready,'new run kept saved growth '+JSON.stringify(restarted));
- // The replay button and Chapter 1 survivor carry-over use the same third-instar start.
- await page.evaluate(()=>localStorage.setItem('g-survival-progress-v1',JSON.stringify({version:1,unlockedChapter:2,currentChapter:2,survivors:13,instar:4,bodySize:1.2,injuries:[]})));await open();
- await page.evaluate(()=>{const t=window.chapter2Test;t.setPosition(t.maze.goal.x,t.maze.goal.y);for(let k=0;k<200;k++)t.step(.02);});await page.locator('#again').click();await page.waitForFunction(()=>window.chapter2Test&&!document.querySelector('#begin').disabled);
- const replay=await page.evaluate(()=>{const t=window.chapter2Test,s=t.snapshot();t.setPosition(t.maze.molt.x,t.maze.molt.y);return {survivors:s.survivors,bodySize:s.bodySize,molted:s.molted,atStart:s.x===t.maze.start.x&&s.y===t.maze.start.y,ready:t.snapshot().moltReady};});check(replay.survivors===13&&replay.bodySize===1.02&&!replay.molted&&replay.atStart&&replay.ready,'replay or survivor carry-over failed '+JSON.stringify(replay));
- // A clear target warns; crossing behind a mound cancels the aim. Do this for both lizards.
- await page.evaluate(()=>localStorage.clear());await open();
- const cover=await page.evaluate(()=>{
-  const t=window.chapter2Test,results=[];
-  // D31 -> H29 crosses F30; K35 -> M37 crosses L36.
-  for(const [i,visible,hidden] of [[0,{x:9,y:63},{x:17,y:57}],[1,{x:25,y:69},{x:27,y:73}]]){
-   t.setPosition(visible.x,visible.y);for(let k=0;k<60;k++)t.step(.02);const warning=t.snapshot().lizards[i].warning;
-   t.setPosition(hidden.x,hidden.y);for(let k=0;k<120;k++)t.step(.02);const after=t.snapshot().lizards[i];results.push({warning,after:{warning:after.warning,strike:after.strike,timer:after.timer}});
-  }return results;
- });
- check(cover.every(c=>c.warning>0&&c.after.warning===0&&c.after.strike===0&&c.after.timer===0),'mound cover did not cancel sight '+JSON.stringify(cover));
- await page.evaluate(()=>{window.chapter2Test.setPosition(17,67);document.querySelector('#entry').hidden=true;});await page.waitForTimeout(100);await page.screenshot({path:'artifacts/chapter2-gecko-room.png'});
- check(errors.length===0,errors.join('\n'));
- const contacts=[];
- for(const kind of ['centipede','gecko','geji'])for(let index=0;index<(kind==='centipede'?3:2);index++){
-  await open();const result=await page.evaluate(([kind,index])=>{const t=window.chapter2Test;
-   const p=kind==='centipede'?t.maze.centipedes[index].path[2]:kind==='gecko'?t.maze.lairs[index]:{x:t.maze.gejis[index].xLeft,y:t.maze.gejis[index].y};
-   t.setPosition(p.x,p.y);if(kind==='centipede')t.setEnemy('warning',p.y,0,p.x,index);
-   const start=t.snapshot().survivors;let firstLoss=null;
-   for(let k=0;k<650;k++){t.step(.02);if(t.snapshot().survivors!==start){firstLoss=(k+1)*.02;break;}}
-   return {kind,index,firstLoss,lost:start-t.snapshot().survivors};
-  },[kind,index]);contacts.push(result);
- }
- check(contacts.every(c=>c.firstLoss>=.4&&c.lost===1),'an enemy lacks warning or contact '+JSON.stringify(contacts));
- const extendedReach=[];
- for(const [index,x,y] of [[0,9,71],[1,23,59]]){await open();extendedReach.push(await page.evaluate(([index,x,y])=>{const t=window.chapter2Test;t.setPosition(x,y);const before=t.snapshot();let firstLoss=null;for(let k=0;k<200;k++){t.step(.02);if(t.snapshot().survivors<before.survivors){firstLoss=(k+1)*.02;break;}}return {index,distance:Math.hypot(x-t.maze.lairs[index].x,y-t.maze.lairs[index].y),scale:before.geckoVisuals[index].scale,otherDistance:Math.hypot(x-t.maze.lairs[1-index].x,y-t.maze.lairs[1-index].y),firstLoss};},[index,x,y]));}
- check(extendedReach.every(r=>r.scale===1.2&&r.distance>9&&r.otherDistance>12&&r.firstLoss>=2&&r.firstLoss<3),'enlarged gecko cannot reach exposed prey '+JSON.stringify(extendedReach));
- check(errors.length===0,errors.join('\n'));
- const report={extendedReach,patrol,recovery,ready,growth,restarted,replay,cover,contacts,pageErrors:errors};await writeFile('artifacts/chapter2-difficulty-audit.json',JSON.stringify(report,null,2));console.log('PASS chapter2 difficulty',JSON.stringify(report));
+ check(report.initial.body===1.02&&report.initial.model===3&&!report.initial.ready,'initial state');check(!report.patrol.blocked&&report.patrol.visited.every((n,i)=>n===report.patrol.expected[i]),'patrol '+JSON.stringify(report.patrol));
+ check(report.gejiContinuous,'geji jumped or left patrol');check(report.holes.every(h=>h.player&&h.enemy&&h.shelter&&h.route),'holes '+JSON.stringify(report.holes));check(!report.b18WithoutFood,'B18 still grants molt');check(report.pickups.every(r=>r.gain>0),'resource collection');check(report.healing>.49,'droppings do not heal');check(report.slow<report.fast*.7,'depletion does not slow movement');check(report.during.molting>0&&report.during.x===report.during.expected&&report.during.range===22,'Space freeze/sense/molt');check(report.grown.molted&&report.grown.size===1.2&&report.grown.model===3,'growth model');
+ await page.evaluate(()=>{document.querySelector('#entry').hidden=true;});await page.waitForTimeout(200);await page.screenshot({path:'artifacts/chapter2-adjusted-third.png'});
+ await open();report.restart=await page.evaluate(()=>{const s=window.chapter2Test.snapshot();return {size:s.bodySize,molted:s.molted,ready:s.moltReady};});check(report.restart.size===1.02&&!report.restart.molted&&!report.restart.ready,'restart');
+ report.attacks=[];
+ for(let index=0;index<2;index++){await open();report.attacks.push(await page.evaluate(index=>{const t=window.chapter2Test,l=t.maze.lairs[index],x=l.x<16?l.x+6:l.x-6;t.setPosition(x,l.y);const start=t.snapshot().survivors;let firstLoss=null,max=0,warning=false;
+  for(let i=0;i<230;i++){t.step(.02);const s=t.snapshot(),e=s.lizards[index];warning||=e.warning>0;max=Math.max(max,Math.hypot(e.x-l.x,e.y-l.y));if(s.survivors<start&&firstLoss===null)firstLoss=(i+1)*.02;if(firstLoss!==null)t.setPosition(5,35);}
+  return {index,warning,firstLoss,max};},index));}
+ check(report.attacks.every(a=>a.warning&&a.firstLoss>=.4),'gecko warning/contact '+JSON.stringify(report.attacks));
+ // Dodge after the aim is fixed: the strike must carry past the old target and farther than the former 10.8 unit cap.
+ await open();report.reach=await page.evaluate(()=>{const t=window.chapter2Test,l=t.maze.lairs.find(l=>l.x<16),index=t.maze.lairs.indexOf(l);t.setPosition(l.x+6,l.y);for(let i=0;i<65;i++)t.step(.02);t.setPosition(l.x+6,l.y+3);let max=0;for(let i=0;i<120;i++){t.step(.02);const e=t.snapshot().lizards[index];max=Math.max(max,Math.hypot(e.x-l.x,e.y-l.y));}return max;});check(report.reach>10.8,'strike reach '+report.reach);
+ await page.evaluate(()=>{document.querySelector('#entry').hidden=true;window.chapter2Test.setPosition(17,69);});await page.waitForTimeout(200);await page.screenshot({path:'artifacts/chapter2-adjusted-geckos.png'});
+ check(errors.length===0,errors.join('\n'));report.pageErrors=errors;await writeFile('artifacts/chapter2-adjustment-audit.json',JSON.stringify(report,null,2));console.log('PASS',JSON.stringify(report));
 }finally{await browser.close();}

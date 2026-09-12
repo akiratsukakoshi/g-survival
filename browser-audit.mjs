@@ -32,8 +32,9 @@ async function prepareMolt(page) {
     (await page.locator('#objective').textContent())?.includes('Space を3秒長押し'),
     'ready status is missing',
   );
+  // Software WebGL may need more wall-clock time; the required simulated 3-second hold is unchanged.
   await page.keyboard.down('Space');
-  await page.waitForFunction(() => window.gameTest.snapshot().molting, null, { timeout: 15000 });
+  await page.waitForFunction(() => window.gameTest.snapshot().molting, null, { timeout: 60000 });
   await page.keyboard.up('Space');
 }
 

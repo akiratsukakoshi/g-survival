@@ -52,13 +52,12 @@ export function animateGecko(g:THREE.Group,time:number,s:GeckoPose){
  if(r.last===null||teleport){initialize(g,r,s);dt=0;}r.last=time;r.mode=s.mode;g.position.copy(origin);g.rotation.set(0,0,0);g.scale.setScalar(r.scale);
  const dx=origin.x-r.previous.x,dy=origin.y-r.previous.y,moved=Math.hypot(dx,dy),moving=moved>1e-6&&dt>0;r.speed=moving?moved/dt:0;
  if(moving){
-  const velocityYaw=Math.atan2(dy,dx);r.backing=s.mode==='return'&&(r.backing||Math.abs(angle(velocityYaw-r.heading))>2);
+  const velocityYaw=Math.atan2(dy,dx);r.backing=false;
   r.travel+=moved;
-  if(r.backing){for(const p of r.path){p.x+=dx;p.y+=dy;}r.path[0].copy(origin);}
-  else{r.heading+=clamp(angle(velocityYaw-r.heading),-dt*9,dt*9);r.path.unshift(origin.clone());let total=0;for(let i=1;i<r.path.length;i++){total+=r.path[i].distanceTo(r.path[i-1]);if(total>r.length+1){r.path.length=i+1;break;}}if(r.path.length>400)r.path.splice(1,1);}
+  {r.heading+=clamp(angle(velocityYaw-r.heading),-dt*9,dt*9);r.path.unshift(origin.clone());let total=0;for(let i=1;i<r.path.length;i++){total+=r.path[i].distanceTo(r.path[i-1]);if(total>r.length+1){r.path.length=i+1;break;}}if(r.path.length>400)r.path.splice(1,1);}
  }else{
   r.path[0].copy(origin);
-  if(s.mode==='warning'&&Number.isFinite(s.heading)){const turn=clamp(angle(s.heading-r.heading),-dt*4,dt*4);r.heading+=turn;for(let i=1;i<r.path.length;i++){const p=r.path[i],d=p.distanceTo(origin),q=p.clone().sub(origin).applyAxisAngle(Z,turn*(1-.30*Math.min(1,d/r.length)));p.copy(origin).add(q);}}
+  // 予告は頭頸部だけで狙う。胴尾の履歴を回転・平行移動すると外周を貫通する。
   if(s.mode!=='return')r.backing=false;
  }
  const aimTarget=s.mode==='warning'&&Number.isFinite(s.heading)?s.heading:r.heading;r.aim+=clamp(angle(aimTarget-r.aim),-dt*4,dt*4);
@@ -84,5 +83,5 @@ export function animateGecko(g:THREE.Group,time:number,s:GeckoPose){
  g.updateMatrixWorld(true);
 }
 
-export function geckoDebug(g:THREE.Group){const r=rigs.get(g);if(!r)return null;const wp=(name:string)=>r.joints.get(name)!.bone.getWorldPosition(new THREE.Vector3()).toArray();return{mode:r.mode,scale:r.scale,travel:r.travel,speed:r.speed,heading:r.heading,backing:r.backing,resets:r.resets,bones:r.joints.size,pathPoints:r.path.length,head:wp('head'),tail:wp('tail_07'),feet:r.feet.map(f=>({name:f.name,stance:f.stance,anchor:f.anchor.toArray(),ankle:f.palm.bone.getWorldPosition(new THREE.Vector3()).toArray(),error:f.contactError,lift:f.lift,curl:f.curl}))};}
+export function geckoDebug(g:THREE.Group){const r=rigs.get(g);if(!r)return null;const wp=(name:string)=>r.joints.get(name)!.bone.getWorldPosition(new THREE.Vector3()).toArray();return{mode:r.mode,scale:r.scale,travel:r.travel,speed:r.speed,heading:r.heading,aim:r.aim,backing:r.backing,resets:r.resets,bones:r.joints.size,pathPoints:r.path.length,head:wp('head'),tail:wp('tail_07'),feet:r.feet.map(f=>({name:f.name,stance:f.stance,anchor:f.anchor.toArray(),ankle:f.palm.bone.getWorldPosition(new THREE.Vector3()).toArray(),error:f.contactError,lift:f.lift,curl:f.curl}))};}
 export function disposeGecko(g:THREE.Group){const r=rigs.get(g);if(!r)return;const skeletons=new Set<THREE.Skeleton>();r.model.traverse(o=>{if(o instanceof THREE.SkinnedMesh){skeletons.add(o.skeleton);for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});for(const sk of skeletons)sk.dispose();rigs.delete(g);}

@@ -1,0 +1,17 @@
+{
+  "legs": 6,
+  "antennae": 2,
+  "moving": true,
+  "independent": true,
+  "stopped": true,
+  "meshes": 27,
+  "heroBefore": 1,
+  "molt": {
+    "instar": 3,
+    "visible": true,
+    "white": 1
+  },
+  "hardened": true,
+  "reset": true,
+  "errors": []
+}

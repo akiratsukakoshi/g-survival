@@ -34,7 +34,7 @@ try{
  expect((await snapshot()).geckoWarning>0,'gecko warning did not precede its strike');
  await page.evaluate(n=>{const t=window.chapter2Test;for(let i=0;i<250&&t.snapshot().survivors===n;i++)t.step(.02);},geckoBefore);
  expect((await snapshot()).survivors===geckoBefore-1,'gecko did not capture after warning');
- await page.evaluate(m=>{window.chapter2Test.setPosition(m.x,m.y);window.chapter2Test.startMolt();},maze.molt);
+ await page.evaluate(m=>{window.chapter2Test.setPosition(m.x,m.y);window.chapter2Test.setResources(1,1);window.chapter2Test.startMolt();},maze.molt);
  await page.evaluate(()=>{const t=window.chapter2Test;for(let i=0;i<200&&!t.snapshot().molted;i++)t.step(.02);});
  const postMolt=await snapshot();expect(postMolt.molted&&postMolt.bodySize===1.2,'chapter molt did not grow and persist the body: '+JSON.stringify(postMolt));
  // 4齢(1.20)が 1.10 の隙間へ押し込むと通れない。

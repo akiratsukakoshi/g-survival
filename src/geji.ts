@@ -38,17 +38,17 @@ function solve(r:Rig,f:Foot,foot:THREE.Vector3){
 /** Metachronal contact gait: displacement schedules steps; world anchors prevent skating. */
 export function animateGeji(g:THREE.Group,time:number,s:GejiPose,surface?:GejiSurface){
  const r=rigs.get(g);if(!r)return;const origin=new THREE.Vector3(s.x,s.y,s.z),active=s.active!==false;let dt=r.last===null?0:clamp(time-r.last,0,.05),moved=origin.distanceTo(r.previous);
- const reset=r.last===null||time<r.last||time-r.last>1||moved>2||active!==r.active;r.heading=s.heading;
+ const reset=r.last===null||time<r.last||time-r.last>1||moved>2||active!==r.active;const turned=Math.abs(Math.atan2(Math.sin(s.heading-r.heading),Math.cos(s.heading-r.heading)));r.heading=s.heading;
  g.position.copy(origin);g.rotation.set(0,0,r.heading);g.scale.setScalar(r.scale);
  for(const j of r.joints){j.bone.position.copy(j.position);j.bone.quaternion.copy(j.rotation);}g.updateMatrixWorld(true);
  if(reset){r.travel=0;r.resets++;dt=0;moved=0;for(const f of r.feet){f.anchor.copy(reachable(r,f,neutral(r,f,origin,0,surface)));f.from.copy(f.anchor);f.to.copy(f.anchor);f.stance=true;f.swing=0;f.lift=f.curl=0;f.cycle=-1;}}
- r.active=active;r.last=time;r.previous.copy(origin);r.speed=dt>0&&active?moved/dt:0;const moving=active&&r.speed>1e-5;if(moving)r.travel+=moved;
+ r.active=active;r.last=time;r.previous.copy(origin);const travel=moved+(reset?0:turned*2*r.scale);r.speed=dt>0&&active?travel/dt:0;const moving=active&&r.speed>1e-5;if(moving)r.travel+=travel;
  const stride=1.25*r.scale;
  for(const f of r.feet){
   if(!active){f.anchor.copy(neutral(r,f,origin,0,surface));f.stance=true;f.lift=f.curl=0;continue;}
-  const hip=f.upper.bone.getWorldPosition(new THREE.Vector3()),toe=f.d.clone().sub(f.c).multiplyScalar(r.scale).applyAxisAngle(Z,r.heading),phase=r.travel/stride+f.offset,cycle=Math.floor(phase),fraction=phase-cycle,reach=hip.distanceTo(f.anchor.clone().sub(toe)),due=moving&&fraction>=.64&&f.cycle!==cycle,forced=moving&&reach>(f.l1+f.l2)*.96;
+  const hip=f.upper.bone.getWorldPosition(new THREE.Vector3()),toe=f.d.clone().sub(f.c).multiplyScalar(r.scale).applyAxisAngle(Z,r.heading),phase=r.travel/stride+f.offset,cycle=Math.floor(phase),fraction=phase-cycle,reach=hip.distanceTo(f.anchor.clone().sub(toe)),due=moving&&fraction>=.64&&f.cycle!==cycle,forced=moving&&(reach>(f.l1+f.l2)*(turned>.001?.82:.96)||reach<Math.abs(f.l1-f.l2)+.03);
   if(f.stance&&(due||forced)){f.stance=false;f.swing=0;f.from.copy(f.anchor);f.to.copy(reachable(r,f,neutral(r,f,origin,stride*.68,surface)));f.duration=clamp(stride*.36/Math.max(r.speed,.01),.028,.3);f.cycle=cycle;f.steps++;}
-  const target=f.anchor.clone();if(!f.stance){f.swing=clamp(f.swing+dt/f.duration,0,1);const t=f.swing,e=t*t*(3-2*t);target.copy(f.from).lerp(f.to,e);f.lift=Math.sin(Math.PI*t)*.22*r.scale;f.curl=Math.sin(Math.PI*t)*.22;target.z+=f.lift;if(t>=1){f.anchor.copy(f.to);f.stance=true;f.lift=f.curl=0;}}
+  const target=f.anchor.clone();if(!f.stance){f.to.copy(reachable(r,f,f.to));f.swing=clamp(f.swing+dt/f.duration,0,1);const t=f.swing,e=t*t*(3-2*t);target.copy(f.from).lerp(f.to,e);f.lift=Math.sin(Math.PI*t)*.22*r.scale;f.curl=Math.sin(Math.PI*t)*.22;target.z+=f.lift;if(t>=1){f.anchor.copy(f.to);f.stance=true;f.lift=f.curl=0;}}
   else f.lift=f.curl=0;solve(r,f,target);
  }
  // Only feelers continue a small searching movement at rest. Legs settle and remain planted.

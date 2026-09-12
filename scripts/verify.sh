@@ -26,6 +26,8 @@ if curl -sf -o /dev/null --max-time 3 http://127.0.0.1:5173/; then
   run "chapter2-audit.mjs" node chapter2-audit.mjs
   run "chapter2-difficulty-audit.mjs" node chapter2-difficulty-audit.mjs
   run "chapter2-route-audit.mjs" node chapter2-route-audit.mjs
+  run "gecko-terrain-audit.mjs" node gecko-terrain-audit.mjs
+  run "third-instar-audit.mjs" node third-instar-audit.mjs
   run "nymph-audit.mjs (GLB integration)" node nymph-audit.mjs
 else
   echo "--- SKIP: 開発サーバーが未起動。別ターミナルで 'npm run dev' を実行してから再度流すこと。"
