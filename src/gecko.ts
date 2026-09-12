@@ -77,7 +77,8 @@ export function animateGecko(g:THREE.Group,time:number,s:GeckoPose){
  const stride=2.1*r.scale;
  for(const f of r.feet){const hip=f.upper.bone.getWorldPosition(new THREE.Vector3()),phase=r.travel/stride+f.offset,cycle=Math.floor(phase),fraction=phase-cycle,normal=neutralFoot(r,f,s.z,0),due=moving&&((fraction>.60&&cycle!==f.cycle)||cycle>f.cycle+1),overreach=hip.distanceTo(f.anchor)>(f.l1+f.l2)*.93;
   if(f.stance&&((due&&normal.distanceTo(f.anchor)>.12*r.scale)||overreach)){f.stance=false;f.swing=0;f.from.copy(f.anchor);f.to.copy(neutralFoot(r,f,s.z,moving?stride*.30*(r.backing?-1:1):0));f.duration=moving?clamp(stride*.38/Math.max(r.speed,.6),.022,.24):.12;f.targetHeading=r.heading;f.cycle=cycle;}
-  let ankle=f.anchor.clone();if(!f.stance){f.swing=clamp(f.swing+dt/f.duration,0,1);const t=f.swing,e=t*t*(3-2*t);ankle.copy(f.from).lerp(f.to,e);f.lift=Math.sin(Math.PI*t)*.22*r.scale;ankle.z+=f.lift;f.curl=Math.sin(Math.PI*Math.min(1,t/ .83))*.65;f.heading+=angle(f.targetHeading-f.heading)*Math.min(1,dt*16);if(t>=1){f.anchor.copy(f.to);f.stance=true;f.lift=0;f.curl=0;f.cycle=cycle;}}
+  // 大きな個体の旋回中も、着地点は現在の股関節から届く壁面上へ補正する。
+  let ankle=f.anchor.clone();if(!f.stance){const reach=Math.sqrt(Math.max(0,((f.l1+f.l2)*.98)**2-(f.to.z-hip.z)**2)),dx=f.to.x-hip.x,dy=f.to.y-hip.y,d=Math.hypot(dx,dy);if(d>reach){f.to.x=hip.x+dx/d*reach;f.to.y=hip.y+dy/d*reach;}f.swing=clamp(f.swing+dt/f.duration,0,1);const t=f.swing,e=t*t*(3-2*t);ankle.copy(f.from).lerp(f.to,e);f.lift=Math.sin(Math.PI*t)*.22*r.scale;ankle.z+=f.lift;f.curl=Math.sin(Math.PI*Math.min(1,t/ .83))*.65;f.heading+=angle(f.targetHeading-f.heading)*Math.min(1,dt*16);if(t>=1){f.anchor.copy(f.to);f.stance=true;f.lift=0;f.curl=0;f.cycle=cycle;}}
   else{f.lift=0;f.curl=0;}solveFoot(r,f,ankle);
  }
  g.updateMatrixWorld(true);

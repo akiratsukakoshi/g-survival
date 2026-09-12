@@ -38,7 +38,7 @@ try{
  const walk=async route=>{assert(route.length>0,'BFS route is missing');walked+=route.length;const leg=await page.evaluate(drive,[route,0,route.length]);assert(leg.ok,'route failed '+leg.why+' at '+leg.i+' position '+leg.s.x+','+leg.s.y+' survivors '+leg.s.survivors);};
  if(molt){
   // Descend the centipede shaft using its existing escape slits, instead of running into the head.
-  for(const address of ['E12','E14','E16','E18','D18'])await walk(await page.evaluate(a=>window.chapter2Test.route({r:Number(a.slice(1))-1,c:a.charCodeAt(0)-65}),address));
+  for(const address of ['E12','E14','E16','E18','B18'])await walk(await page.evaluate(a=>window.chapter2Test.route({r:Number(a.slice(1))-1,c:a.charCodeAt(0)-65}),address));
   await page.evaluate(()=>{dispatchEvent(new KeyboardEvent('keydown',{code:'Space'}));for(let j=0;j<330;j++)window.chapter2Test.step(.02);dispatchEvent(new KeyboardEvent('keyup',{code:'Space'}));});
   assert((await snapshot()).molted,'normal Space input did not complete molt');await page.screenshot({path:'artifacts/chapter2-route-molted.png'});
   for(const address of ['E16','E14','E12'])await walk(await page.evaluate(a=>window.chapter2Test.route({r:Number(a.slice(1))-1,c:a.charCodeAt(0)-65}),address));

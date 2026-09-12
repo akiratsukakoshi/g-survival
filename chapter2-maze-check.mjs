@@ -37,7 +37,7 @@ check((n['y']??0)>=1,`y = ${n['y']??0} (>=1)`);
 
 
 console.log('[ガクチョ指定の配置・巡回]');
-for(const [address,ch] of Object.entries({B07:'1',D18:'M',E18:'2',I18:'~',D27:'1',D28:'1',J27:'2',J28:'2'}))check(at(Number(address.slice(1))-1,address.charCodeAt(0)-65)===ch,address+'='+ch);
+for(const [address,ch] of Object.entries({B07:'1',B18:'M',C18:'2',D18:'2',E18:'2',I18:'~',D27:'1',D28:'1',J27:'2',J28:'2'}))check(at(Number(address.slice(1))-1,address.charCodeAt(0)-65)===ch,address+'='+ch);
 check(maze.centipedes.length===3&&maze.gejis.length===2&&maze.lairs.length===2,'敵: ムカデ3 / ゲジ2 / ヤモリ2');
 check([...Array(7)].every((_,i)=>at(21,3+i)==='g'),'D22〜J22 ゲジ');
 check(MAP.slice(28,40).every(row=>[...row.slice(1,13)].every(ch=>'.~y'.includes(ch))),'B29〜M40 一室、断熱材と巣のみ');

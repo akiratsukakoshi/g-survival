@@ -17,6 +17,7 @@ try{
   for(let i=0;i<1200;i++){t.step(.02);blocked||=t.snapshot().enemies.some(e=>m.blockedAt(e.x,e.y,.4,'enemy'));}
   return {blocked,states:t.snapshot().enemies.map(e=>e.state)};});
  check(!recovery.blocked&&recovery.states.every(s=>s==='patrol'),'centipedes did not rejoin patrol '+JSON.stringify(recovery));
+ await page.evaluate(()=>{const t=window.chapter2Test;t.setPosition(t.maze.molt.x+6,t.maze.molt.y);document.querySelector('#entry').hidden=true;});await page.waitForTimeout(100);await page.screenshot({path:'artifacts/chapter2-molt-approach.png'});
  // Real Space hold must finish even while still held; readiness is visual, local to M.
  await page.evaluate(()=>{const t=window.chapter2Test;t.setPosition(t.maze.molt.x,t.maze.molt.y);document.querySelector('#entry').hidden=true;});
  await page.waitForTimeout(100);
@@ -56,6 +57,9 @@ try{
   },[kind,index]);contacts.push(result);
  }
  check(contacts.every(c=>c.firstLoss>=.4&&c.lost===1),'an enemy lacks warning or contact '+JSON.stringify(contacts));
+ const extendedReach=[];
+ for(const [index,x,y] of [[0,9,71],[1,23,59]]){await open();extendedReach.push(await page.evaluate(([index,x,y])=>{const t=window.chapter2Test;t.setPosition(x,y);const before=t.snapshot();let firstLoss=null;for(let k=0;k<200;k++){t.step(.02);if(t.snapshot().survivors<before.survivors){firstLoss=(k+1)*.02;break;}}return {index,distance:Math.hypot(x-t.maze.lairs[index].x,y-t.maze.lairs[index].y),scale:before.geckoVisuals[index].scale,otherDistance:Math.hypot(x-t.maze.lairs[1-index].x,y-t.maze.lairs[1-index].y),firstLoss};},[index,x,y]));}
+ check(extendedReach.every(r=>r.scale===1.2&&r.distance>9&&r.otherDistance>12&&r.firstLoss>=2&&r.firstLoss<3),'enlarged gecko cannot reach exposed prey '+JSON.stringify(extendedReach));
  check(errors.length===0,errors.join('\n'));
- const report={patrol,recovery,ready,growth,persisted,cover,contacts,pageErrors:errors};await writeFile('artifacts/chapter2-difficulty-audit.json',JSON.stringify(report,null,2));console.log('PASS chapter2 difficulty',JSON.stringify(report));
+ const report={extendedReach,patrol,recovery,ready,growth,persisted,cover,contacts,pageErrors:errors};await writeFile('artifacts/chapter2-difficulty-audit.json',JSON.stringify(report,null,2));console.log('PASS chapter2 difficulty',JSON.stringify(report));
 }finally{await browser.close();}

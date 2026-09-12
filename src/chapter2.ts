@@ -9,8 +9,8 @@ type ChapterSave = { version:1; unlockedChapter:number; currentChapter:number; s
 type CentipedeState = 'patrol'|'warning'|'chase'|'recover';
 const SAVE_KEY='g-survival-progress-v1';
 const clamp=(v:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,v));
-// AI暫定値: ヤモリ検知半径 9、脱皮後速度倍率 1.12、視線切れ 1.0 秒、ランプ距離 14、霧 .03。ガクチョ指定ではない。
-const GECKO_RANGE=9,SIGHT_GRACE=1,SEE_RANGE=7.5,MOLT_SPEED=1.12;
+// AI暫定値: ヤモリ模型 1.2（従来の3倍）・検知半径 12・突進 .9 秒、脱皮後速度倍率 1.12、視線切れ 1.0 秒、ランプ距離 14、霧 .03。ガクチョ指定ではない。
+const GECKO_SCALE=1.2,GECKO_RANGE=12,SIGHT_GRACE=1,SEE_RANGE=7.5,MOLT_SPEED=1.12;
 const clearLine=(ax:number,ay:number,bx:number,by:number)=>{const n=Math.ceil(Math.hypot(bx-ax,by-ay)*4);for(let i=0;i<=n;i++)if(blockedAt(ax+(bx-ax)*i/Math.max(n,1),ay+(by-ay)*i/Math.max(n,1),.2,'enemy'))return false;return true;};
 
 export function readProgress():ChapterSave{try{const v=JSON.parse(localStorage.getItem(SAVE_KEY)??'');if(v?.version===1&&Number.isInteger(v.survivors))return v;}catch{}return{version:1,unlockedChapter:1,currentChapter:1,survivors:24,instar:1,bodySize:.75,injuries:[]};}
@@ -37,19 +37,21 @@ export async function mountChapterTwo(){
  // 見た目＝当たり判定。壁は材木ボックス、隙間は2本の柱、ポケットは窪み、山は台形メッシュ。
  for(const w of grid.walls)box(w.x+w.w/2,w.y+w.h/2,WALL_H/2,w.w,w.h,WALL_H,timber);
  for(const s of grid.slits){const jamb=(CELL-s.width)/2;if(s.axis==='v'){box(s.x-s.width/2-jamb/2,s.y,WALL_H/2,jamb,CELL,WALL_H,timber);box(s.x+s.width/2+jamb/2,s.y,WALL_H/2,jamb,CELL,WALL_H,timber);}else{box(s.x,s.y-s.width/2-jamb/2,WALL_H/2,CELL,jamb,WALL_H,timber);box(s.x,s.y+s.width/2+jamb/2,WALL_H/2,CELL,jamb,WALL_H,timber);}}
- for(const p of grid.pockets)box(p.x,p.y,-.2,CELL-.12,CELL-.12,.5,voidMat);
+ const moltMat=new THREE.MeshStandardMaterial({color:'#d4c9a0',emissive:'#dccb91',emissiveIntensity:.28,roughness:1});
+ for(const p of grid.pockets)box(p.x,p.y,-.2,CELL-.12,CELL-.12,.5,p.ch==='M'?moltMat:voidMat);
+ const moltLight=new THREE.PointLight('#e5d6a6',3,9);moltLight.position.set(grid.molt.x,-grid.molt.y,.6);scene.add(moltLight);
  for(const m of grid.mounds){const geometry=new THREE.PlaneGeometry(m.w,m.h,24,24),positions=geometry.attributes.position;for(let i=0;i<positions.count;i++){const x=positions.getX(i)+m.x+m.w/2,y=-positions.getY(i)+m.y+m.h/2;positions.setXYZ(i,x,-y,heightAt(x,y));}geometry.computeVertexNormals();const mound=new THREE.Mesh(geometry,insulation);mound.castShadow=mound.receiveShadow=true;scene.add(mound);}
  const slipper=box(grid.goal.x,grid.goal.y,-3.4,5,1.4,.3,voidMat);slipper.visible=false;
  const hero=createAnimal('roach',save.bodySize),heroSurface=new THREE.Group();heroSurface.add(hero);scene.add(heroSurface);
  const heroMaterials:THREE.MeshStandardMaterial[]=[];hero.traverse(o=>{if(o instanceof THREE.Mesh&&!Array.isArray(o.material)&&o.material instanceof THREE.MeshStandardMaterial){o.material=o.material.clone();heroMaterials.push(o.material);}});
  const centipedes=grid.centipedes.map(()=>{const model=createCentipede();scene.add(model);return model;});
  const gejiModels=grid.gejis.map(()=>{const model=new THREE.Group(),mat=new THREE.MeshStandardMaterial({color:'#4f5350',roughness:.82});for(let n=0;n<12;n++){const body=new THREE.Mesh(new THREE.SphereGeometry(.12,8,5),mat);body.scale.set(1.5,.62,.2);body.position.set(-n*.18,0,.1);model.add(body);for(const side of [-1,1]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(.008,.008,.78,4),mat);leg.rotation.z=side*Math.PI/2.25;leg.position.set(0,side*.27,.02);body.add(leg);}}scene.add(model);return model;});
- const geckos=grid.lairs.map(()=>{const model=createGecko();scene.add(model);return model;});
+ const geckos=grid.lairs.map(()=>{const model=createGecko(GECKO_SCALE);scene.add(model);return model;});
  const audio=new AudioEngine();const keys=new Set<string>();let started=false,ended=false,probe=false,last=performance.now(),survivors=save.survivors,invulnerable=0,lossNotice=0,moltHold=0,molting=0,molted=save.bodySize>1.02,humanTimer=-1,elapsed=0;
  let bodySize=save.bodySize;const player={x:grid.start.x,y:grid.start.y,angle:Math.PI/2},checkpoint={x:grid.start.x,y:grid.start.y};
  const enemies=grid.centipedes.map(track=>{const index=Math.floor(track.path.length/2),p=track.path[index];return {x:p.x,y:p.y,state:'patrol' as CentipedeState,timer:0,lost:0,index:index+1,direction:1,speed:0,rejoin:[] as {x:number;y:number}[]};});
  const crossings=grid.gejis.map((lane,i)=>({...lane,offset:i*5,exposure:0,phase:0,x:lane.xLeft-3}));
- const lizards=grid.lairs.map(lair=>({x:lair.x,y:lair.y,tx:lair.x,ty:lair.y,strike:0,timer:0,warning:0}));
+ const lizards=grid.lairs.map((lair,i)=>({x:lair.x,y:lair.y,tx:lair.x,ty:lair.y,heading:i===0?Math.PI/2:-Math.PI/2,strike:0,timer:0,warning:0}));
  addEventListener('keydown',e=>{if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight','Space'].includes(e.code))e.preventDefault();keys.add(e.code);});addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',()=>keys.clear());addEventListener('pointerdown',e=>{if(e.button===0&&!(e.target as HTMLElement).closest('button'))probe=true;});addEventListener('pointerup',()=>probe=false);
  const resize=()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();};addEventListener('resize',resize);resize();
  const begin=document.querySelector<HTMLButtonElement>('#begin')!;begin.disabled=false;begin.innerHTML='壁の中へ入る <span>↓</span>';begin.onclick=()=>{started=true;document.querySelector('#entry')!.classList.add('gone');void audio.start();};document.querySelector<HTMLButtonElement>('#again')!.onclick=()=>location.reload();
@@ -80,15 +82,17 @@ export async function mountChapterTwo(){
   enemy.speed=Math.hypot(enemy.x-ox,enemy.y-oy)/Math.max(dt,.001);
  }}
  function lose(){if(invulnerable>0)return;survivors--;lossNotice=2.5;invulnerable=1.2;player.x=checkpoint.x;player.y=checkpoint.y;for(const enemy of enemies){enemy.state='recover';enemy.timer=0;enemy.lost=0;enemy.rejoin=[];}for(const lizard of lizards){lizard.warning=lizard.strike=lizard.timer=0;}if(survivors<=0)finish(false);}
+ // 吻先から後方1.5までの頭部だけが捕食域。プレイヤー半径を加え、遮蔽物越しの接触は無効。
+ function geckoContact(lizard:typeof lizards[number]){const dx=player.x-lizard.x,dy=player.y-lizard.y,bx=-Math.cos(lizard.heading),by=Math.sin(lizard.heading),along=clamp(dx*bx+dy*by,0,1.5),distance=Math.hypot(dx-bx*along,dy-by*along);return distance<.45+bodySize/2&&clearLine(lizard.x,lizard.y,player.x,player.y);}
  function updateHazards(dt:number,now:number){
   for(const lane of crossings){lane.phase=(now+lane.offset)%10;lane.x=lane.xLeft-3+(lane.phase-.9)*(lane.xRight-lane.xLeft+6)/3.9;
    lane.exposure=Math.abs(player.y-lane.y)<5?lane.exposure+dt:0;
    if(lane.phase>=.9&&lane.phase<4.8&&lane.exposure>=.9&&!sheltered()&&Math.abs(player.y-lane.y)<.9&&player.x<=lane.x+.25&&player.x>=lane.x-2.4&&heightAt(player.x,player.y)<.3)lose();}
   for(const [i,lizard] of lizards.entries()){const lair=grid.lairs[i],home=Math.hypot(lizard.x-lair.x,lizard.y-lair.y)<.05;
    const visible=!sheltered()&&Math.hypot(player.x-lair.x,player.y-lair.y)<GECKO_RANGE&&clearLine(lizard.x,lizard.y,player.x,player.y);
-   if(lizard.warning>0){if(!visible){lizard.warning=0;lizard.timer=0;}else{lizard.warning=Math.max(0,lizard.warning-dt);if(lizard.warning===0)lizard.strike=.65;}}
-   else if(lizard.strike<=0&&home){lizard.timer=visible?lizard.timer+dt:0;if(lizard.timer>=1.1){lizard.warning=.9;lizard.timer=0;lizard.tx=player.x;lizard.ty=player.y;}}
-   if(lizard.strike>0){lizard.strike=Math.max(0,lizard.strike-dt);moveEnemy(lizard,{x:lizard.tx,y:lizard.ty},12,dt,.45);if(!sheltered()&&heightAt(player.x,player.y)<.3&&Math.hypot(player.x-lizard.x,player.y-lizard.y)<.7)lose();}
+   if(lizard.warning>0){if(!visible){lizard.warning=0;lizard.timer=0;}else{lizard.warning=Math.max(0,lizard.warning-dt);if(lizard.warning===0)lizard.strike=.9;}}
+   else if(lizard.strike<=0&&home){lizard.timer=visible?lizard.timer+dt:0;if(lizard.timer>=1.1){lizard.warning=.9;lizard.timer=0;lizard.tx=player.x;lizard.ty=player.y;lizard.heading=Math.atan2(-(lizard.ty-lizard.y),lizard.tx-lizard.x);}}
+   if(lizard.strike>0){lizard.strike=Math.max(0,lizard.strike-dt);moveEnemy(lizard,{x:lizard.tx,y:lizard.ty},12,dt,.45);if(!sheltered()&&heightAt(player.x,player.y)<.3&&geckoContact(lizard))lose();}
    else if(lizard.warning<=0&&!home)moveEnemy(lizard,lair,3,dt,.45);
   }
   if(moltReady()&&keys.has('Space'))moltHold+=dt;else moltHold=0;
@@ -103,7 +107,7 @@ export async function mountChapterTwo(){
   for(const mat of heroMaterials){mat.emissive.set('#d5c8a2');mat.emissiveIntensity=molting>0?.22:moltReady()?.1+.08*Math.sin(now/1000*3):0;}
   for(const [i,model] of centipedes.entries()){const enemy=enemies[i];model.position.set(enemy.x,-enemy.y,.02);animateCentipede(model,now/1000,enemy.speed);}
   for(const [i,model] of gejiModels.entries()){const lane=crossings[i];model.visible=lane.phase>=.9&&lane.phase<4.8;model.position.set(lane.x,-lane.y,.72);}
-  for(const [i,model] of geckos.entries()){const lizard=lizards[i],lair=grid.lairs[i];model.visible=Math.hypot(player.x-lizard.x,player.y-lizard.y)<16;animateGecko(model,now/1000,{x:lizard.x,y:-lizard.y,z:-.095,heading:Math.atan2(-(lizard.ty-lizard.y),lizard.tx-lizard.x),mode:lizard.warning>0?'warning':lizard.strike>0?'strike':Math.hypot(lizard.x-lair.x,lizard.y-lair.y)>.05?'return':'idle',warning:lizard.warning});}
+  for(const [i,model] of geckos.entries()){const lizard=lizards[i],lair=grid.lairs[i];model.visible=Math.hypot(player.x-lizard.x,player.y-lizard.y)<16+9.1*GECKO_SCALE;animateGecko(model,now/1000,{x:lizard.x,y:-lizard.y,z:-.095,heading:lizard.heading,mode:lizard.warning>0?'warning':lizard.strike>0?'strike':Math.hypot(lizard.x-lair.x,lizard.y-lair.y)>.05?'return':'idle',warning:lizard.warning});}
   slipper.visible=humanTimer>=1.2;slipper.position.x=grid.goal.x+(humanTimer-2.2)*4;const near=humanTimer>=0?clamp(humanTimer/1.4,0,1):0;camera.position.set(player.x+7-2*near,-player.y+5-near,22-5*near);camera.lookAt(player.x-8*near,-player.y-2+near,.3);lamp.position.set(player.x,-player.y+1,4);renderer.render(scene,camera);
  }
  function frame(now:number){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last)/1000);last=now;let speed=0;if(started&&!ended){invulnerable=Math.max(0,invulnerable-dt);lossNotice=Math.max(0,lossNotice-dt);elapsed+=dt;speed=move(dt);if(sheltered()){checkpoint.x=player.x;checkpoint.y=player.y;}updateEnemy(dt);updateHazards(dt,elapsed);const enemy=enemies.reduce((best,e)=>Math.hypot(e.x-player.x,e.y-player.y)<Math.hypot(best.x-player.x,best.y-player.y)?e:best),geckoWarning=lizards.some(l=>l.warning>0)?1:0;const gap=nearGap(),tooNarrow=!!gap&&gap.width<bodySize,danger=enemies.some(e=>e.state==='warning'||e.state==='chase'),gejiWarning=crossings.some(l=>Math.abs(player.y-l.y)<7&&l.phase<.9);const warning=lossNotice>0?'Gが1体、減りました':humanTimer>=0?(humanTimer<1.2?'床板が、上で軋み始めた。':'重い影が、隙間を横切る。'):molting>0?'背中が裂け、白い脚が壁に貼りつく。':!molted&&moltHold>0?'殻の内側が、ゆっくり膨らむ。':tooNarrow?'胸が擦れる。ここはもう通れない。':danger?(enemy.state==='warning'?'粉塵が、下から浮いた。':'ムカデの頭が、こちらへ向いた。'):geckoWarning>0?'巾木の影が、呼吸のように膨らむ。':gejiWarning?'配管の上で、細い脚音が増えていく。':probe&&gap?(gap.width>=bodySize?'触角の先に、身体を隠せる奥行きがある。':'触角が、奥で戻ってきた。'):'';document.querySelector('#warning')!.textContent=warning;document.querySelector('#population')!.textContent=survivors+' 匹';document.querySelector('#objective')!.textContent=player.y<16?'断熱材の層':player.y<40?'配線と間柱のシャフト':player.y<62?'湿った配管の分岐':player.y<82?'巾木の裏':'キッチンの床下';audio.update(dt,{speed:speed/3.6,danger:danger?1:gejiWarning||geckoWarning>0? .8:humanTimer>=0?.9:0,pan:Math.sign(enemy.x-player.x),molting:molting>0,stamina:1,human:humanTimer>=0?1:0,vertical:enemy.y-player.y,loss:lossNotice>2});}render(now,speed);}
