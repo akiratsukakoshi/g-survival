@@ -1,0 +1,12 @@
+{
+  "bones": 68,
+  "skin_vertices": 58190,
+  "skin_polygons": 58186,
+  "digits": 20,
+  "pad_bottom_z": 0.0,
+  "wall_z": -0.005,
+  "forward": "+X",
+  "dorsal": "+Z",
+  "glb_exported": false,
+  "motion_validation": "not yet performed"
+}

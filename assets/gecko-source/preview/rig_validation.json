@@ -1,0 +1,19 @@
+{
+  "bones": 68,
+  "weighted_vertices": 58190,
+  "evaluated_vertices": 232748,
+  "weight_normalization": "PASS",
+  "pose_response_and_reset": "PASS",
+  "pose_max_displacement": {
+    "spine_front": 0.4758073409939742,
+    "tail_03": 0.3272156283038936,
+    "fore_L_lower": 0.11338577138574427,
+    "hind_R_upper": 0.2865572508870164,
+    "fore_L_digit3_02": 0.010073967197902396
+  },
+  "rest_mesh_min_z": 0.0012583263451233506,
+  "wall_z": -0.005,
+  "wall_penetration": 0,
+  "toe_bones": 40,
+  "motion_quality": "NOT VALIDATED; these are deformation smoke checks only"
+}
