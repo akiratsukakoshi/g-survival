@@ -35,3 +35,7 @@
 `chapter2Test.snapshot()` に `enemies` / `crossings` / `lizards` / `geckoVisuals` / `moltReady` / `glow` / `visualScale` / `speedMultiplier` を追加。`setEnemy`の末尾indexで個体指定可能、`route(to)`は目的セルを指定可能。モデルの+X前方/+Z背中、world(x,-simY,z)、既存のモデルAPIは保持。
 
 `bash scripts/verify.sh`は`chapter2-difficulty-audit.mjs`も実行する。証跡は`artifacts/chapter2-difficulty-audit.json`とPNG。地図の再生成はNode v23以降をPATHに置いて`python3 scripts/export-chapter2-map.py`（Pillow/NotoSansJPが必要）。
+
+## ガクチョの確認（2026-09-12）
+
+「いい感じです。ドキュメント反映されていればpushをお願いします」との確認・push指示を受領。実装と資料のコミット`d27b2b6`をmainへpush済み。実機FPSや初見所要時間の計測値を受け取ったものではない。
