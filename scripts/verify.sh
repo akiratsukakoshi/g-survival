@@ -24,6 +24,7 @@ echo "===== browser-audit.mjs ====="
 if curl -sf -o /dev/null --max-time 3 http://127.0.0.1:5173/; then
   if node browser-audit.mjs; then echo "--- OK"; else echo "--- NG"; fail=1; fi
   run "chapter2-audit.mjs" node chapter2-audit.mjs
+  run "chapter2-difficulty-audit.mjs" node chapter2-difficulty-audit.mjs
   run "chapter2-route-audit.mjs" node chapter2-route-audit.mjs
   run "nymph-audit.mjs (GLB integration)" node nymph-audit.mjs
 else

@@ -1,0 +1,117 @@
+{
+  "patrol": {
+    "count": 3,
+    "gejis": 2,
+    "geckos": 2,
+    "blocked": false,
+    "visited": [
+      9,
+      13,
+      12
+    ],
+    "expected": [
+      9,
+      13,
+      12
+    ],
+    "survivors": 8
+  },
+  "recovery": {
+    "blocked": false,
+    "states": [
+      "patrol",
+      "patrol",
+      "patrol"
+    ]
+  },
+  "ready": {
+    "ready": true,
+    "glow": 0.16280164825035803
+  },
+  "growth": {
+    "before": 1.29999999999999,
+    "speed": 1.4559999999999906,
+    "during": 2.98,
+    "after": {
+      "molted": true,
+      "bodySize": 1.2
+    },
+    "save": {
+      "version": 1,
+      "unlockedChapter": 2,
+      "currentChapter": 2,
+      "survivors": 8,
+      "instar": 4,
+      "bodySize": 1.2,
+      "injuries": []
+    }
+  },
+  "persisted": {
+    "bodySize": 1.2,
+    "visualScale": 1.2,
+    "speed": 1.12
+  },
+  "cover": [
+    {
+      "warning": 0.7999999999999999,
+      "after": {
+        "warning": 0,
+        "strike": 0,
+        "timer": 0
+      }
+    },
+    {
+      "warning": 0.7999999999999999,
+      "after": {
+        "warning": 0,
+        "strike": 0,
+        "timer": 0
+      }
+    }
+  ],
+  "contacts": [
+    {
+      "kind": "centipede",
+      "index": 0,
+      "firstLoss": 0.62,
+      "lost": 1
+    },
+    {
+      "kind": "centipede",
+      "index": 1,
+      "firstLoss": 0.62,
+      "lost": 1
+    },
+    {
+      "kind": "centipede",
+      "index": 2,
+      "firstLoss": 0.62,
+      "lost": 1
+    },
+    {
+      "kind": "gecko",
+      "index": 0,
+      "firstLoss": 2,
+      "lost": 1
+    },
+    {
+      "kind": "gecko",
+      "index": 1,
+      "firstLoss": 2,
+      "lost": 1
+    },
+    {
+      "kind": "geji",
+      "index": 0,
+      "firstLoss": 1.5,
+      "lost": 1
+    },
+    {
+      "kind": "geji",
+      "index": 1,
+      "firstLoss": 6.5,
+      "lost": 1
+    }
+  ],
+  "pageErrors": []
+}

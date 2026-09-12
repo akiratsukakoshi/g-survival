@@ -12,7 +12,7 @@ export const MAP:string[]=[
  '#........~~~##',
  '#.############',
  '#....~~~....##',
- '###########.##',
+ '#1#########.##',
  '#..~........##',
  '#######.######',
  '#####c......##',
@@ -23,29 +23,29 @@ export const MAP:string[]=[
  '#####c#####.##',
  '###o2c###...##',
  '#####c###.####',
- '#####c#.....##',
+ '###M2c#.~...##',
  '###########.##',
  '#...........##',
  '#.############',
- '#...........##',
+ '#..ggggggg..##',
  '#########.####',
  '###.......####',
  '###.##########',
  '###ggggggg.o##',
- '#########.####',
- '#M........####',
- '###.#####1####',
- '###.........##',
- '#########.####',
- '#.........####',
- '###.##########',
- '#...........##',
- '###1#######2##',
- '#....y......##',
- '#.#####.######',
- '#.....#o######',
- '#####.########',
- '#.........####',
+ '###1#####2####',
+ '#..1.....2####',
+ '#............#',
+ '#....~~......#',
+ '#..y.....~...#',
+ '#............#',
+ '#~~..........#',
+ '#.....~~.....#',
+ '#.........y..#',
+ '#..........~~#',
+ '#..~~........#',
+ '#............#',
+ '#......~~....#',
+ '#............#',
  '#########.####',
  '#...........##',
  '###########.##',
@@ -74,11 +74,18 @@ function rects(pred:(ch:string)=>boolean){const used=Array.from({length:ROWS},()
 function build(){
  const refs=(pred:(ch:string)=>boolean)=>{const out:Ref[]=[];for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const ch=at(r,c);if(pred(ch))out.push({r,c,ch,...centerOf(r,c)});}return out;};
  const one=(ch:string)=>refs(k=>k===ch)[0],cs=refs(k=>k==='c'),gs=refs(k=>k==='g');
+ const track=(id:string,addresses:string[])=>{const path:Ref[]=[];for(const address of addresses){const c=address.charCodeAt(0)-65,r=Number(address.slice(1))-1;
+  if(!path.length)path.push({r,c,ch:at(r,c),...centerOf(r,c)});else{let prev=path[path.length-1];if(prev.r!==r&&prev.c!==c)throw Error('Diagonal patrol waypoint: '+address);
+   while(prev.r!==r||prev.c!==c){const rr=prev.r+Math.sign(r-prev.r),cc=prev.c+Math.sign(c-prev.c);prev={r:rr,c:cc,ch:at(rr,cc),...centerOf(rr,cc)};path.push(prev);}}}
+  if(path.some(p=>blockedAt(p.x,p.y,.4,'enemy')))throw Error('Blocked patrol: '+id);return {id,path};};
+ const centipedes=[track('shaft',['F10','F18']),track('upper',['E08','L08','L06','I06']),track('east',['K18','J18','J16','L16','L14','J14','J12'])];
+ const gejis=[...new Set(gs.map(p=>p.r))].sort((a,b)=>b-a).map(r=>{const row=gs.filter(p=>p.r===r);return {y:row[0].y,xLeft:Math.min(...row.map(p=>p.x)),xRight:Math.max(...row.map(p=>p.x))};});
  return {rows:ROWS,cols:COLS,cell:CELL,start:one('S'),goal:one('G'),molt:one('M'),lair:one('y'),
+  centipedes,gejis,lairs:refs(k=>k==='y'),
   pockets:refs(k=>k==='o'||k==='M'),
   slits:refs(k=>SLIT_W[k]!==undefined).map(s=>({...s,width:SLIT_W[s.ch],axis:axisOf(s.r,s.c)}) as Slit),
   centipede:{x:cs[0].x,yTop:Math.min(...cs.map(k=>k.y)),yBottom:Math.max(...cs.map(k=>k.y))},
-  geji:{y:gs[0].y,xLeft:Math.min(...gs.map(k=>k.x)),xRight:Math.max(...gs.map(k=>k.x))},
+  geji:gejis[0],
   walls:rects(ch=>ch==='#'),mounds:rects(ch=>ch==='~')};
 }
 let cached:ReturnType<typeof build>|undefined;
@@ -88,7 +95,7 @@ export const parseMaze=()=>cached??=build();
 export function blockedAt(x:number,y:number,r=.35,who:'player'|'enemy'='player',_bodySize=1.02){
  const c0=Math.floor((x-ORIGIN_X-r)/CELL),c1=Math.floor((x-ORIGIN_X+r)/CELL),r0=Math.floor((y-r)/CELL),r1=Math.floor((y+r)/CELL);
  for(let rr=r0;rr<=r1;rr++)for(let cc=c0;cc<=c1;cc++){const ch=at(rr,cc),x0=ORIGIN_X+cc*CELL,y0=rr*CELL,x1=x0+CELL,y1=y0+CELL;
-  if(ch==='#'){if(near(x,y,r,x0,y0,x1,y1))return true;continue;}
+  if(ch==='#'||(who==='enemy'&&ch==='~')){if(near(x,y,r,x0,y0,x1,y1))return true;continue;}
   if(ch==='o'||ch==='M'){if(who==='enemy'&&near(x,y,r,x0,y0,x1,y1))return true;continue;}
   const w=SLIT_W[ch];if(w===undefined)continue;
   if(who==='enemy'){if(near(x,y,r,x0,y0,x1,y1))return true;continue;}
@@ -102,11 +109,11 @@ export function heightAt(x:number,y:number){const k=cellOf(x,y);if(at(k.r,k.c)!=
  const d=Math.min(x-(ORIGIN_X+a*CELL),ORIGIN_X+(b+1)*CELL-x,y-u*CELL,(v+1)*CELL-y);
  return MOUND_TOP*Math.max(0,Math.min(1,d/MOUND_RAMP));}
 // 4近傍 BFS。1 は bodySize<=1.10、2 は <=1.40 のときだけ通る。
-export function reachable(bodySize:number,from?:{r:number;c:number},to?:{r:number;c:number}){
+export function reachable(bodySize:number,from?:{r:number;c:number},to?:{r:number;c:number},who:'player'|'enemy'='player'){
  const m=parseMaze(),s=from??m.start,t=to??m.goal,key=(r:number,c:number)=>r*COLS+c;
  const prev=new Map<number,number>([[key(s.r,s.c),-1]]),queue=[key(s.r,s.c)],end=key(t.r,t.c);
  for(let head=0;head<queue.length;head++){const k=queue[head];if(k===end)break;const r=Math.floor(k/COLS),c=k%COLS;
-  for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){const rr=r+dr,cc=c+dc,kk=key(rr,cc);if(prev.has(kk)||!walkable(at(rr,cc),bodySize))continue;prev.set(kk,k);queue.push(kk);}}
+  for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){const rr=r+dr,cc=c+dc,kk=key(rr,cc);if(prev.has(kk)||!walkable(at(rr,cc),bodySize)||(who==='enemy'&&'12oM~'.includes(at(rr,cc))))continue;prev.set(kk,k);queue.push(kk);}}
  if(!prev.has(end))return {ok:false,path:[] as Ref[],length:0};
  const path:Ref[]=[];for(let k=end;k!==-1;k=prev.get(k)!){const r=Math.floor(k/COLS),c=k%COLS;path.push({r,c,ch:at(r,c),...centerOf(r,c)});}
  path.reverse();return {ok:true,path,length:path.length};}

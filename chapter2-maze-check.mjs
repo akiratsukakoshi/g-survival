@@ -1,6 +1,6 @@
 // 第2章の迷路を機械検証する(ブラウザー不要)。docs/chapter2-maze-design.md §3 の必須条件。
 // 実行: node --experimental-strip-types chapter2-maze-check.mjs
-import { parseMaze, reachable, deadEnds, counts, renderAscii, MAP, CELL } from './src/chapter2-maze.ts';
+import { parseMaze, reachable, deadEnds, counts, renderAscii, MAP, CELL, at, blockedAt } from './src/chapter2-maze.ts';
 const fail=[];
 const check=(ok,label)=>{console.log((ok?'  ok   ':'  NG   ')+label);if(!ok)fail.push(label);return ok;};
 const maze=parseMaze();
@@ -23,8 +23,8 @@ check(fromMolt.ok,`1.20:M→G = ${fromMolt.ok} (最短 ${fromMolt.length} セル
 
 console.log('[迷路らしさ]');
 const ends=deadEnds();
-check(ends.length>=8,`行き止まり数 = ${ends.length} (>=8) ${ends.map(e=>`(${e.x},${e.y})`).join(' ')}`);
-check(narrow.length>=110,`1.02 の最短経路長 = ${narrow.length} セル (>=110)`);
+check(ends.length>0,`行き止まり数 = ${ends.length} (参考値・大部屋化後も分岐を保持) ${ends.map(e=>`(${e.x},${e.y})`).join(' ')}`);
+check(wide.length>narrow.length,`成長で近道を失う: 3齢 ${narrow.length} / 4齢 ${wide.length} セル`);
 
 console.log('[凡例の個数]');
 const n=counts();
@@ -34,6 +34,15 @@ check(n['M']===1,`M = ${n['M']??0} (=1)`);
 check((n['c']??0)>=1,`c = ${n['c']??0} (>=1)`);
 check((n['g']??0)>=1,`g = ${n['g']??0} (>=1)`);
 check((n['y']??0)>=1,`y = ${n['y']??0} (>=1)`);
+
+
+console.log('[ガクチョ指定の配置・巡回]');
+for(const [address,ch] of Object.entries({B07:'1',D18:'M',E18:'2',I18:'~',D27:'1',D28:'1',J27:'2',J28:'2'}))check(at(Number(address.slice(1))-1,address.charCodeAt(0)-65)===ch,address+'='+ch);
+check(maze.centipedes.length===3&&maze.gejis.length===2&&maze.lairs.length===2,'敵: ムカデ3 / ゲジ2 / ヤモリ2');
+check([...Array(7)].every((_,i)=>at(21,3+i)==='g'),'D22〜J22 ゲジ');
+check(MAP.slice(28,40).every(row=>[...row.slice(1,13)].every(ch=>'.~y'.includes(ch))),'B29〜M40 一室、断熱材と巣のみ');
+for(const track of maze.centipedes){check(track.path.every((p,i)=>!blockedAt(p.x,p.y,.4,'enemy')&&(!i||Math.abs(p.r-track.path[i-1].r)+Math.abs(p.c-track.path[i-1].c)===1)),track.id+' 巡回全点は敵通行可能、4近傍で連続');}
+for(const size of [1.02,1.2])for(const [a,b] of [[maze.start,maze.goal],[maze.start,maze.molt],[maze.molt,maze.goal]])check(reachable(size,a,b).path.every(p=>!blockedAt(p.x,p.y,size/2)),size+' 経路中心は身体半径でも通行可能');
 
 console.log('[格子仕様]');
 check(MAP.length===46,`行数 = ${MAP.length} (=46)`);
