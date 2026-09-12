@@ -28,6 +28,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 | 脱皮演出 | `src/molt.ts` | — | 空き |
 | 音響 | `src/audio.ts` | — | 空き |
 | 検証スクリプト | `*.mjs`, `scripts/` | — | 空き（2026-09-12再開始修正） |
+| Blender3齢確認素材 | `assets/third-instar-source/` | — | 空き（PNG3方向・ガクチョ確認待ち） |
 | Blender幼齢素材 | `C:\Users\tukap\blender-work\roach_codex.py`, `codex_v6/` | — | 空き |
 | Blenderムカデ確認素材 | `assets/centipede-source/` | — | 空き |
 | Blenderゲジ確認素材 | `assets/geji-source/` | — | 空き（PNG3方向・ガクチョ確認待ち） |
@@ -112,6 +113,8 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 ### 素材制作
 
+- A05 3齢Blender素材: 写真3枚を参考に `assets/third-instar-source/` にPNG3方向とblendを作成。第1章脱皮後/第2章開始用。GLBなし、造形はガクチョ確認待ち。
+
 - A04 ゲジBlender素材: 添付3画像を参考に同一モデルの真上・斜俯瞰・真横PNGを制作。`assets/geji-source/`。GLB化せずガクチョの造形確認待ち。
 
 - A03 ヤモリBlender素材: **2026-09-12 ガクチョPNG承認・GLB/ゲーム接続完了**。`public/models/gecko.glb`、`src/gecko.ts`、`docs/gecko-integration.md`。68骨・足首IK/指屈伸/移動履歴の胴体と尾追従/予告の構え/後ずさり。GLB再読込・骨格専用監査・本編予告/突進・build/verify全PASS。実機の自然さ/FPS、全身の迷路壁接触・別面への乗移りは未判定/未実装。
@@ -172,6 +175,14 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 ---
 
 ## 6. セッションログ
+
+### 2026-09-12 / Codex / 3齢相当ゴキブリのBlender確認モデル
+
+- **成果物**: `assets/third-instar-source/preview.py`、README、同一静止モデルの真上/斜俯瞰/真横1800×1200 PNG、編集用blend。Windows編集元は `C:\Users\tukap\blender-work\third_instar_codex_v1\`。
+- **検証**: Blender 4.0による3方向レンダー完了・3枚目視。初回の腹節の隙間と明るすぎる色を修正。3対の脚/触角2本/尾毛2本/翅なし。build、smoke 12群、playthrough、迷路監査PASS。verify.shのブラウザー部分はサーバー接続不可でSKIP（合格ではない）。ログは同素材のverification/。
+- **範囲・未完**: GLBなし・ゲームコード未変更。+X前方/+Z背中。写真の寸法比・色・側面厚はAI暫定、真横資料なし。造形はガクチョ確認待ち。リグ/歩行/脱皮白化/ゲーム寸法・実機評価は未実施。
+- **共同作業/Git**: 開始時の別作業の未コミット変更を保持。pull --rebaseはdirtyで停止したためfetchで確認しorigin/mainからの未取込0件。今回分のみコミット、pushなし。専用素材オーナー解放。
+
 
 ### 2026-09-12 / Codex / ゲジBlender静止造形・PNG3方向
 

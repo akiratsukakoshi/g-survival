@@ -1,0 +1,15 @@
+{
+  "leg_pairs": 3,
+  "antennae": 2,
+  "cerci": 2,
+  "wings": 0,
+  "views": [
+    "nymph_top",
+    "nymph_oblique",
+    "nymph_side"
+  ],
+  "mesh_objects": 417,
+  "coordinates": "+X forward / +Z dorsal",
+  "GLB_exported": false,
+  "dimensions": "artistic reference ratios, not measured biological dimensions"
+}
