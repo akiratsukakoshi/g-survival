@@ -1,0 +1,11 @@
+{
+  "roundtrip": "PASS",
+  "bones": 134,
+  "leg_pairs": 15,
+  "mesh_count": 1,
+  "triangles": 93272,
+  "bytes": 4906644,
+  "normalized_weights": true,
+  "approved_geometry_preserved": true,
+  "coordinates": "+X forward; glTF +Y up restored to +Z by loader"
+}

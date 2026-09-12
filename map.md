@@ -31,12 +31,12 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 | Blender3齢確認素材 | `assets/third-instar-source/` | — | 空き（PNG承認・GLB作成済み、本番未反映） |
 | Blender幼齢素材 | `C:\Users\tukap\blender-work\roach_codex.py`, `codex_v6/` | — | 空き |
 | Blenderムカデ確認素材 | `assets/centipede-source/` | — | 空き |
-| Blenderゲジ確認素材 | `assets/geji-source/` | — | 空き（PNG3方向・ガクチョ確認待ち） |
+| Blenderゲジ確認素材・GLB・歩行 | `assets/geji-source/`, `public/models/geji.glb`, `src/geji.ts`, `geji-audit.mjs` | — | 空き（GLB・第2章接続・歩行検証済み） |
 | Blenderヤモリ確認素材・GLB | `assets/gecko-source/`, `public/models/gecko.glb` | — | 空き（GLB接続済み） |
 | ヤモリ描画・骨格アニメ | `src/gecko.ts`, `gecko-audit.mjs`, `docs/gecko-integration.md` | — | 空き（2026-09-12追加調整・検証済み） |
 | 第2章ヤモリ接続（import/生成/renderのみ） | `src/chapter2.ts` のヤモリ描画呼出し | — | 接続済み・解放（章回帰PASS） |
 | 第2章ムカデGLB受け口・アニメ | `src/centipede.ts` | — | 空き |
-| 第2章迷路・レイアウト | `src/chapter2.ts`, `src/chapter2-maze.ts`, `chapter2-*.mjs` | — | 空き（2026-09-12再開始修正） |
+| 第2章迷路・レイアウト | `src/chapter2.ts`, `src/chapter2-maze.ts`, `chapter2-*.mjs` | — | 空き（2026-09-12ゲジ描画接続） |
 | GLB受け口 | `src/nymph.ts` | — | 空き |
 | 第2章2Dマップ出力 | `scripts/export-chapter2-map.py`, `artifacts/chapter2-map-2d.png` | — | 空き（2026-09-12追加調整・検証済み） |
 | ドキュメント | `*.md` | 共有(追記のみ) | — |
@@ -52,6 +52,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 | # | 日付 | From→To | 状態 | 内容 |
 |---|---|---|---|---|
+| 021 | 2026-09-12 | Codex→Claude | OPEN | **PNG承認済みゲジをGLB・関節歩行へ接続。** `public/models/geji.glb`、`src/geji.ts`、`docs/geji-integration.md`。134骨/単一スキン、15対の脚を足先固定・2節IK・位相差で踏み替え。+X前方/+Z背中、頭前端原点、scale .48/壁面Z=-.095はAI暫定。`chapter2.ts`はロード/生成/render/開発snapshotのみ変更、周期/予告/捕食/迷路は維持。`node geji-audit.mjs`と`node assets/geji-source/chapter_integration_audit.mjs`で脚長・滑り・停止・個体独立性・ロード再試行/本編2体を検証。build/verify各項目は一括＋第1章browser単独再実行でPASS、SKIPなし。次はガクチョの実機で自然さ/FPSを判定、調整時は同監査を維持。全身地形衝突と別面乗移りは未実装。オーナー解放、今回分のみコミット・pushなし。 |
 | 020 | 2026-09-12 | Codex→Claude | OPEN | **章頭の4齢化を修正、Mを減光。** `src/chapter2.ts`で章頭の新規開始/リロード/もう一度を3齢1.02に統一、章1からの匹数は保持。位置の途中再開がないのに保存済み成長だけ適用していた不整合。旧4齢データは削除不要。Mの自己発光/局所光を撤去し床色#222923へ。ヤモリはガクチョ受け入れ・変更なし。`chapter2-difficulty-audit.mjs`で旧保存からのB07通過/B18準備、再プレイ13匹を確認。buildと第2章監査はPASS。第1章browser/nymphは一括・単独各1回とも待機タイムアウト、未解消。詳細 `artifacts/chapter2-restart-verification.txt`。次は同2件の安定性を切り分け、通常入力/脱皮の回帰を維持。今回分コミット、pushなし、オーナー解放。 |
 | 019 | 2026-09-12 | Codex→Claude | OPEN | **ヤモリ拡大・脱皮場所を追加調整。** `docs/chapter2-gecko-scale.md`参照。`src/chapter2-maze.ts`のM=B18/C18〜E18=2、`chapter2.ts`のヤモリ生成1.2（2体を3倍）・検知12/突進.9秒/頭部カプセル・縦向き初期姿勢・Mの明るい床と局所光。`src/gecko.ts`で遊脚の着地点を脚長内へ補正。公開API/模型座標は維持。verify.sh最終全PASS・SKIPなし、gecko-auditの.4/1.2ともPASS、通常キー入力で脱皮なし5/8・あり7/8匹で到達。2D/入口/部屋PNGを確認。次の担当は実プレイ指摘に応じて調整し、予告・遮蔽・拡大骨格監査・両経路を維持。全身の地形衝突と実機FPS/難易度/気づきやすさは未完。018のD18座標等は本件で更新、同OPENは保持。今回分をコミット、push未実施。オーナー解放。 |
 | 018 | 2026-09-12 | Codex→Claude | OPEN | **ガクチョ指定の第2章難易度・地形調整を実装。** `docs/chapter2-difficulty.md`参照。`src/chapter2-maze.ts`に3巡回経路/2横断行/2巣、D18=M、D27/28=1・J27/28=2、B29〜M40大部屋。`parseMaze()`のcentipedes/gejis/lairs、`chapter2Test`の配列snapshotと個体指定を追加し、旧先頭個体APIを維持。モデル座標/API/素材は不変。断熱材はenemy不可・視線遮蔽。M発光、幅1.20・速度1.12倍を実装。再現はverify.shと難易度監査、2D再生成。全検証項目は初回一括＋失敗した時間依存監査の修正後再実行でPASS（詳細ログあり、一括全PASSとは記録しない）。次の担当は実プレイ指摘に応じて調整し、予告・遮蔽・両身体幅の通常入力走破を維持。全身衝突/FPS/難易度の最終判断は残件。オーナー解放。2026-09-12 ガクチョ確認・指示でd27b2b6をpush済み。 |
@@ -115,7 +116,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 - A05 3齢Blender素材: ガクチョPNG承認。`assets/third-instar-source/export/` に静止GLB作成・再読込PASS。本番未反映（別セッション作業中）、リグ/歩行/脱皮・実機検証は今後。
 
-- A04 ゲジBlender素材: 添付3画像を参考に同一モデルの真上・斜俯瞰・真横PNGを制作。`assets/geji-source/`。GLB化せずガクチョの造形確認待ち。
+- A04 ゲジBlender素材: **2026-09-12 ガクチョPNG承認・GLBと第2章接続を実装**。`public/models/geji.glb`、`src/geji.ts`、`docs/geji-integration.md`。134骨・15対の関節脚、足先を固定する接地歩行と位相をずらした踏み替え。全検証項目PASS（一括＋第1章browser再実行）。実機の自然さ/FPSはガクチョ確認待ち。
 
 - A03 ヤモリBlender素材: **2026-09-12 ガクチョPNG承認・GLB/ゲーム接続完了**。`public/models/gecko.glb`、`src/gecko.ts`、`docs/gecko-integration.md`。68骨・足首IK/指屈伸/移動履歴の胴体と尾追従/予告の構え/後ずさり。GLB再読込・骨格専用監査・本編予告/突進・build/verify全PASS。実機の自然さ/FPS、全身の迷路壁接触・別面への乗移りは未判定/未実装。
 
@@ -175,6 +176,14 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 ---
 
 ## 6. セッションログ
+
+### 2026-09-12 / Codex / ゲジGLB・足先固定の関節歩行を第2章へ接続
+
+- **変更**: 承認模型を `assets/geji-source/export_geji.py` で134骨/15対の脚/単一スキンへ。`public/models/geji.glb`、`src/geji.ts`、`chapter2.ts`描画接続、専用監査2本、ドキュメント・検証PNG/動画を追加。元PNG/blendの造形は保持。Windows編集元 `C:\Users\tukap\blender-work\geji\geji_rig.blend` にも保存。+X前方/+Z背中、縮尺.48・原点Z=-.095・歩幅/位相等はAI暫定。
+- **検証**: Blender GLB再読込PASS（134骨・93,272三角形・4,906,644 bytes）。専用歩行監査は30/60fps相当×低速/本編速度/高め速度の6条件PASS。全30脚が踏み替え、支持脚最低13本、脚長一定、停止後30脚接地、個別骨/材質、ロード失敗から再試行と再出現を確認。本編2体の連続フレームで位置/壁面接地/足先固定PASS（最大足先移動約7.5e-8）。ゲーム画像と歩行連続PNGを目視、確認動画を保存。
+- **回帰**: build・smoke・playthrough・maze・第2章状態/難易度/通常入力走破・nymphは一括PASS。第1章browserは開始ボタンの待機30秒で1件NG、同1件を単独再実行してPASS。**各項目PASSだが一括全PASSではない。SKIPなし。** ログ `assets/geji-source/game/verification.txt` / `browser_retry.txt`。通常入力は脱皮なし5/8・104.2秒、あり7/8・148.8秒。
+- **未完**: 実機の自然さ/FPSはガクチョ待ち。足先の通路内補正は全身地形衝突の実装ではなく、別面への乗移りも未実装。周期・予告・捕食・迷路・他の敵は変更なし。
+- **Git/引継ぎ**: ゲジと章接続のオーナー解放。既存検証画像の差分、同時進行の3齢素材はコミット対象外。本件のみコミット、push未実施。INBOXにAPI/座標/検証を記載。
 
 ### 2026-09-12 / Codex / 承認済み3齢モデルのGLB化（本番反映前）
 

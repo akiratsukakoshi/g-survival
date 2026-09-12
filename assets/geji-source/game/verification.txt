@@ -1,0 +1,312 @@
+
+===== build (tsc --noEmit + vite build) =====
+
+> g-survival@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 20 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.37 kB │ gzip:   0.29 kB
+dist/assets/index-MDOlTAh4.css    3.67 kB │ gzip:   1.36 kB
+dist/assets/index-803Yg61Q.js   707.13 kB │ gzip: 192.28 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.65s
+--- OK
+
+===== smoke.mjs =====
+PASS eight directions, probe half speed, wall 30% bonus, solids
+PASS 3 second hold, full 20 second immobile molt, reset on death
+PASS ants contact, swarm, exact 3 seconds including molt, random handoff
+PASS NPC ant swarm requires continuous contact and kills after 3 seconds
+PASS sprinting breaks ant contact before capture
+PASS ant escape: sprint disengages at normal/low reserves; a lost ant resists swarm recruitment
+PASS spider locks warning for .8 seconds, one capture per lunge
+PASS freeze hides, dash vibration beyond visual cone, occlusion
+PASS depletion is lethal, early resources cannot unlock molt, human events once
+PASS three checkpoints heal and gather, ants remain outside solids
+PASS climb: 0.35 秒の押し込みで張り付き、天面に登り、踏み外して降り、高所はアリが届かない
+PASS climb: 面の左右が入力方向と一致する(4面すべて)
+12 regression groups passed
+(node:163637) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+--- OK
+
+===== playthrough.mjs --probe =====
+{
+  "mode": "probing",
+  "waypoints": [
+    {
+      "goal": {
+        "x": 12,
+        "y": 7,
+        "type": "food",
+        "amount": 0
+      },
+      "time": 11.7,
+      "group": 24
+    },
+    {
+      "goal": {
+        "x": 20,
+        "y": 3,
+        "type": "water",
+        "amount": 0
+      },
+      "time": 37.8,
+      "group": 24
+    },
+    {
+      "goal": {
+        "x": 29,
+        "y": 7,
+        "type": "food",
+        "amount": 0
+      },
+      "time": 64.5,
+      "group": 24
+    },
+    {
+      "goal": {
+        "x": 19,
+        "y": 12,
+        "type": "food",
+        "amount": 0
+      },
+      "time": 91.2,
+      "group": 24
+    },
+    {
+      "goal": {
+        "x": 8,
+        "y": 15.5,
+        "type": "water",
+        "amount": 0
+      },
+      "time": 123.7,
+      "group": 16
+    },
+    {
+      "goal": {
+        "x": 6,
+        "y": 20,
+        "type": "food",
+        "amount": 0
+      },
+      "time": 142.6,
+      "group": 13
+    },
+    {
+      "goal": {
+        "x": 26,
+        "y": 24,
+        "type": "water",
+        "amount": 0
+      },
+      "time": 186.1,
+      "group": 13
+    },
+    {
+      "goal": {
+        "x": 24,
+        "y": 30,
+        "type": "food",
+        "amount": 3.7311666666664633
+      },
+      "time": 208.9,
+      "group": 13
+    },
+    {
+      "goal": {
+        "x": 31,
+        "y": 31,
+        "type": "water",
+        "amount": 3.040729999999762
+      },
+      "time": 231.7,
+      "group": 13
+    },
+    {
+      "goal": {
+        "x": 32,
+        "y": 32
+      },
+      "time": 237.7,
+      "group": 13
+    }
+  ],
+  "deaths": 0,
+  "elapsed": 260.7,
+  "state": "won",
+  "siblings": 12,
+  "hunger": 0.917029999999946,
+  "water": 0.9086733333333754
+}
+(node:163648) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+--- OK
+
+===== chapter2-maze-check.mjs =====
+=== 第2章 迷路 (S→G 最短経路を * で重ねた ASCII / bodySize 1.02) ===
+##############
+#......S****##
+###########*##
+#********~~~##
+#*############
+#*...~~~....##
+#1#########.##
+#**~****....##
+#######*######
+#####c.*****##
+#####c#####*##
+###o2c2o#..*##
+#####c###.#2##
+###o2c2o#..*##
+#####c#####*##
+###o2c###***##
+#####c###*####
+#M222c#.~***##
+###########*##
+#***********##
+#*############
+#**ggggggg..##
+#########*####
+###*******####
+###*##########
+###ggggggg.o##
+###1#####2####
+#..1.....2####
+#..*.........#
+#..*.~~......#
+#..y.....~...#
+#..*.........#
+#~~*.........#
+#..*..~~.....#
+#..*......y..#
+#..*.......~~#
+#..~~........#
+#..*.........#
+#..*...~~....#
+#..*******...#
+#########*####
+#........***##
+###########*##
+#######....*##
+###########G##
+##############
+
+格子: 14 列 x 46 行、1セル=2 ユニット、プレイ域 x 2〜30 / y 0〜92
+S=(17,3) G=(25,89) M=(5,35) ヤモリの巣=(9,61)
+ムカデ列 x=13 y 19〜35 / ゲジ行 y=51 x 9〜21
+
+[到達性]
+  ok   1.02:S→G = true (最短 104 セル)
+  ok   1.20:S→G(`1`不使用) = true (最短 112 セル)
+  ok   1.20 の経路に `1` 隙間を含まない = true
+  ok   1.02:S→M = true (最短 43 セル)
+  ok   1.20:M→G = true (最短 90 セル)
+[迷路らしさ]
+  ok   行き止まり数 = 5 (参考値・大部屋化後も分岐を保持) (5,3) (17,35) (25,43) (5,83) (17,87)
+  ok   成長で近道を失う: 3齢 104 / 4齢 112 セル
+[凡例の個数]
+  ok   S = 1 (=1)
+  ok   G = 1 (=1)
+  ok   M = 1 (=1)
+  ok   c = 9 (>=1)
+  ok   g = 14 (>=1)
+  ok   y = 2 (>=1)
+[ガクチョ指定の配置・巡回]
+  ok   B07=1
+  ok   B18=M
+  ok   C18=2
+  ok   D18=2
+  ok   E18=2
+  ok   I18=~
+  ok   D27=1
+  ok   D28=1
+  ok   J27=2
+  ok   J28=2
+  ok   敵: ムカデ3 / ゲジ2 / ヤモリ2
+  ok   D22〜J22 ゲジ
+  ok   B29〜M40 一室、断熱材と巣のみ
+  ok   shaft 巡回全点は敵通行可能、4近傍で連続
+  ok   upper 巡回全点は敵通行可能、4近傍で連続
+  ok   east 巡回全点は敵通行可能、4近傍で連続
+  ok   1.02 経路中心は身体半径でも通行可能
+  ok   1.02 経路中心は身体半径でも通行可能
+  ok   1.02 経路中心は身体半径でも通行可能
+  ok   1.2 経路中心は身体半径でも通行可能
+  ok   1.2 経路中心は身体半径でも通行可能
+  ok   1.2 経路中心は身体半径でも通行可能
+[格子仕様]
+  ok   行数 = 46 (=46)
+  ok   列数 = 14 (=14)
+  ok   外周はすべて # = true
+  ok   隙間 1 = 3 / 2 = 11 (ともに >=1)
+  ok   ポケット(o/M) = 7 (>=2)
+
+chapter2 maze check PASS: 到達性4条件・行き止まり5・最短104セル・凡例の個数
+(node:163699) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+--- OK
+
+===== browser-audit.mjs =====
+node:internal/modules/run_main:104
+    triggerUncaughtException(
+    ^
+
+locator.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('#begin')[22m
+[2m    - locator resolved to <button id="begin">…</button>[22m
+[2m  - attempting click action[22m
+[2m    - waiting for element to be visible, enabled and stable[22m
+[2m    - element is visible, enabled and stable[22m
+[2m    - scrolling into view if needed[22m
+[2m    - done scrolling[22m
+[2m    - performing click action[22m
+
+    at freshScene (/home/tukapontas/g-survival/browser-audit.mjs:16:32)
+    at async file:///home/tukapontas/g-survival/browser-audit.mjs:83:21 {
+  log: [
+    "  - waiting for locator('#begin')",
+    '    - locator resolved to <button id="begin">…</button>',
+    '  - attempting click action',
+    '    - waiting for element to be visible, enabled and stable',
+    '    - element is visible, enabled and stable',
+    '    - scrolling into view if needed',
+    '    - done scrolling',
+    '    - performing click action'
+  ],
+  name: 'TimeoutError'
+}
+
+Node.js v23.7.0
+--- NG
+
+===== chapter2-audit.mjs =====
+chapter2 audit PASS: maze-driven coordinates, router, 8/13 survivors, gap shelter, narrow rejection after molt, centipede warning/chase/head-only contact/recover, gecko warning, molt 1.2, wall-hole ending, page errors=0
+--- OK
+
+===== chapter2-difficulty-audit.mjs =====
+PASS chapter2 difficulty {"extendedReach":[{"index":0,"distance":10,"scale":1.2,"otherDistance":14.142135623730951,"firstLoss":2.74},{"index":1,"distance":10,"scale":1.2,"otherDistance":14.142135623730951,"firstLoss":2.74}],"patrol":{"count":3,"gejis":2,"geckos":2,"blocked":false,"visited":[9,13,12],"expected":[9,13,12],"survivors":8},"recovery":{"blocked":false,"states":["patrol","patrol","patrol"]},"ready":{"ready":true,"glow":0.12456596462927405},"growth":{"before":1.29999999999999,"speed":1.4559999999999906,"during":2.98,"after":{"molted":true,"bodySize":1.2},"save":{"version":1,"unlockedChapter":2,"currentChapter":2,"survivors":8,"instar":4,"bodySize":1.2,"injuries":[]}},"restarted":{"bodySize":1.02,"visualScale":1.02,"speed":1,"molted":false,"atStart":true,"passedNarrow":true,"ready":true},"replay":{"survivors":13,"bodySize":1.02,"molted":false,"atStart":true,"ready":true},"cover":[{"warning":0.7999999999999999,"after":{"warning":0,"strike":0,"timer":0}},{"warning":0.7999999999999999,"after":{"warning":0,"strike":0,"timer":0}}],"contacts":[{"kind":"centipede","index":0,"firstLoss":0.62,"lost":1},{"kind":"centipede","index":1,"firstLoss":0.62,"lost":1},{"kind":"centipede","index":2,"firstLoss":0.62,"lost":1},{"kind":"gecko","index":0,"firstLoss":2,"lost":1},{"kind":"gecko","index":1,"firstLoss":2,"lost":1},{"kind":"geji","index":0,"firstLoss":1.5,"lost":1},{"kind":"geji","index":1,"firstLoss":6.5,"lost":1}],"pageErrors":[]}
+--- OK
+
+===== chapter2-route-audit.mjs =====
+completed {"molt":false,"cells":104,"survivors":5,"seconds":104.2}
+completed {"molt":true,"cells":152,"survivors":7,"seconds":148.8}
+chapter2 route PASS: normal keys only, no position/health/enemy injection [{"molt":false,"cells":104,"survivors":5,"seconds":104.2},{"molt":true,"cells":152,"survivors":7,"seconds":148.8}]
+--- OK
+
+===== nymph-audit.mjs (GLB integration) =====
+PASS nymph integration {"instances":24,"triangles":3944,"materials":1,"bones":27,"independent":true,"moved":true,"stopped":true,"orientations":[{"nx":0,"ny":0,"upError":2.220446049250313e-16,"front":[2.220446049250313e-16,2.220446049250313e-16,-1]},{"nx":1,"ny":0,"upError":2.220446049250313e-16,"front":[4.930380657631324e-32,1,-2.220446049250313e-16]},{"nx":-1,"ny":0,"upError":2.220446049250313e-16,"front":[4.930380657631324e-32,1,2.220446049250313e-16]},{"nx":0,"ny":1,"upError":0,"front":[-2.220446049250313e-16,1,0]},{"nx":0,"ny":-1,"upError":0,"front":[2.220446049250313e-16,1,0]}]}
+--- OK
+
+自動検証: 失敗あり。上の NG を確認する
+注意: 恐怖感・初見の分かりやすさ・実プレイ所要時間・実スピーカー音量は、この検証では判定できない。
