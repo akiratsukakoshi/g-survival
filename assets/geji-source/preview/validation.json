@@ -1,0 +1,13 @@
+{
+  "leg_pairs": 15,
+  "antennae": 2,
+  "views": [
+    "geji_top",
+    "geji_oblique",
+    "geji_side"
+  ],
+  "mesh_objects": 516,
+  "export_glb": false,
+  "coordinates": "+X forward / +Z dorsal",
+  "static_preview_only": true
+}

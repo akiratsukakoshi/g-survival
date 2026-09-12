@@ -30,6 +30,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 | 検証スクリプト | `*.mjs`, `scripts/` | — | 空き（2026-09-12再開始修正） |
 | Blender幼齢素材 | `C:\Users\tukap\blender-work\roach_codex.py`, `codex_v6/` | — | 空き |
 | Blenderムカデ確認素材 | `assets/centipede-source/` | — | 空き |
+| Blenderゲジ確認素材 | `assets/geji-source/` | — | 空き（PNG3方向・ガクチョ確認待ち） |
 | Blenderヤモリ確認素材・GLB | `assets/gecko-source/`, `public/models/gecko.glb` | — | 空き（GLB接続済み） |
 | ヤモリ描画・骨格アニメ | `src/gecko.ts`, `gecko-audit.mjs`, `docs/gecko-integration.md` | — | 空き（2026-09-12追加調整・検証済み） |
 | 第2章ヤモリ接続（import/生成/renderのみ） | `src/chapter2.ts` のヤモリ描画呼出し | — | 接続済み・解放（章回帰PASS） |
@@ -111,6 +112,8 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 ### 素材制作
 
+- A04 ゲジBlender素材: 添付3画像を参考に同一モデルの真上・斜俯瞰・真横PNGを制作。`assets/geji-source/`。GLB化せずガクチョの造形確認待ち。
+
 - A03 ヤモリBlender素材: **2026-09-12 ガクチョPNG承認・GLB/ゲーム接続完了**。`public/models/gecko.glb`、`src/gecko.ts`、`docs/gecko-integration.md`。68骨・足首IK/指屈伸/移動履歴の胴体と尾追従/予告の構え/後ずさり。GLB再読込・骨格専用監査・本編予告/突進・build/verify全PASS。実機の自然さ/FPS、全身の迷路壁接触・別面への乗移りは未判定/未実装。
 
 - A01 幼齢Blender素材: 修正版v6のゲーム組込み・GLB/ブラウザー検証完了（プレイヤー/兄弟12匹・抜け殻）。造形の最終判断・歩行の接地調整・実機FPSは未完。新しい調整値はAI暫定値。
@@ -169,6 +172,13 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 ---
 
 ## 6. セッションログ
+
+### 2026-09-12 / Codex / ゲジBlender静止造形・PNG3方向
+
+- **成果物**: `assets/geji-source/geji_preview.py`、`preview/geji_review.blend`、真上/斜俯瞰/真横PNG、READMEと検証ログ。添付3画像を視覚参照し、15対の長脚、2本の触角、暗い背板を制作。比率・色はAI暫定。+X前方/+Z背中。
+- **範囲**: ガクチョ指定によりBlenderを使用。GLB出力・ゲーム接続・骨格/歩行は未実施。既存ゲームコードと他者の生成物は変更していない。
+- **検証**: Blender 4.0.2で同一モデルから1800×1100の正投影PNG3枚を生成。build、smoke、playthrough、mazeチェックPASS。必須verify.shのブラウザー部分はサーバー未起動でSKIP（合格ではない）。詳細 `assets/geji-source/verification.txt`。PNG目視確認・diff-checkを実施。
+- **未完・Git**: ガクチョの造形確認待ち。ゲーム実機検証は対象外。既存変更はautoStashでpull後に復元、本件のみコミット、pushなし。素材オーナー解放。
 
 ### 2026-09-12 / Codex / 再開始の3齢復帰・脱皮場所を減光
 
