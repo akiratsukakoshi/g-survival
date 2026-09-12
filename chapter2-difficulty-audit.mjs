@@ -30,9 +30,14 @@ try{
  });
  check(growth.during>0&&growth.after.molted&&growth.after.bodySize===1.2,'held Space failed to finish molt');check(Math.abs(growth.speed/growth.before-1.12)<1e-6,'growth speed bonus missing');
  await page.waitForTimeout(100);check(await page.evaluate(()=>window.chapter2Test.snapshot().glow===0),'glow remained outside M');
- await open();const persisted=await page.evaluate(()=>{const s=window.chapter2Test.snapshot();return {bodySize:s.bodySize,visualScale:s.visualScale,speed:s.speedMultiplier};});
- check(persisted.bodySize===1.2&&persisted.visualScale===1.2&&persisted.speed===1.12,'molt reload mismatch '+JSON.stringify(persisted));
  await page.evaluate(()=>{const t=window.chapter2Test;t.setPosition(t.maze.molt.x,t.maze.molt.y);document.querySelector('#entry').hidden=true;});await page.waitForTimeout(100);await page.screenshot({path:'artifacts/chapter2-molt-grown.png'});
+ // A saved fourth instar must not turn a new run at the start into a grown run.
+ await open();const restarted=await page.evaluate(()=>{const t=window.chapter2Test,s=t.snapshot();t.setPosition(5,11);dispatchEvent(new KeyboardEvent('keydown',{code:'KeyS'}));for(let k=0;k<80;k++)t.step(.02);dispatchEvent(new KeyboardEvent('keyup',{code:'KeyS'}));const passedNarrow=t.snapshot().y>15;t.setPosition(t.maze.molt.x,t.maze.molt.y);return {bodySize:s.bodySize,visualScale:s.visualScale,speed:s.speedMultiplier,molted:s.molted,atStart:s.x===t.maze.start.x&&s.y===t.maze.start.y,passedNarrow,ready:t.snapshot().moltReady};});
+ check(restarted.bodySize===1.02&&restarted.visualScale===1.02&&restarted.speed===1&&!restarted.molted&&restarted.atStart&&restarted.passedNarrow&&restarted.ready,'new run kept saved growth '+JSON.stringify(restarted));
+ // The replay button and Chapter 1 survivor carry-over use the same third-instar start.
+ await page.evaluate(()=>localStorage.setItem('g-survival-progress-v1',JSON.stringify({version:1,unlockedChapter:2,currentChapter:2,survivors:13,instar:4,bodySize:1.2,injuries:[]})));await open();
+ await page.evaluate(()=>{const t=window.chapter2Test;t.setPosition(t.maze.goal.x,t.maze.goal.y);for(let k=0;k<200;k++)t.step(.02);});await page.locator('#again').click();await page.waitForFunction(()=>window.chapter2Test&&!document.querySelector('#begin').disabled);
+ const replay=await page.evaluate(()=>{const t=window.chapter2Test,s=t.snapshot();t.setPosition(t.maze.molt.x,t.maze.molt.y);return {survivors:s.survivors,bodySize:s.bodySize,molted:s.molted,atStart:s.x===t.maze.start.x&&s.y===t.maze.start.y,ready:t.snapshot().moltReady};});check(replay.survivors===13&&replay.bodySize===1.02&&!replay.molted&&replay.atStart&&replay.ready,'replay or survivor carry-over failed '+JSON.stringify(replay));
  // A clear target warns; crossing behind a mound cancels the aim. Do this for both lizards.
  await page.evaluate(()=>localStorage.clear());await open();
  const cover=await page.evaluate(()=>{
@@ -61,5 +66,5 @@ try{
  for(const [index,x,y] of [[0,9,71],[1,23,59]]){await open();extendedReach.push(await page.evaluate(([index,x,y])=>{const t=window.chapter2Test;t.setPosition(x,y);const before=t.snapshot();let firstLoss=null;for(let k=0;k<200;k++){t.step(.02);if(t.snapshot().survivors<before.survivors){firstLoss=(k+1)*.02;break;}}return {index,distance:Math.hypot(x-t.maze.lairs[index].x,y-t.maze.lairs[index].y),scale:before.geckoVisuals[index].scale,otherDistance:Math.hypot(x-t.maze.lairs[1-index].x,y-t.maze.lairs[1-index].y),firstLoss};},[index,x,y]));}
  check(extendedReach.every(r=>r.scale===1.2&&r.distance>9&&r.otherDistance>12&&r.firstLoss>=2&&r.firstLoss<3),'enlarged gecko cannot reach exposed prey '+JSON.stringify(extendedReach));
  check(errors.length===0,errors.join('\n'));
- const report={extendedReach,patrol,recovery,ready,growth,persisted,cover,contacts,pageErrors:errors};await writeFile('artifacts/chapter2-difficulty-audit.json',JSON.stringify(report,null,2));console.log('PASS chapter2 difficulty',JSON.stringify(report));
+ const report={extendedReach,patrol,recovery,ready,growth,restarted,replay,cover,contacts,pageErrors:errors};await writeFile('artifacts/chapter2-difficulty-audit.json',JSON.stringify(report,null,2));console.log('PASS chapter2 difficulty',JSON.stringify(report));
 }finally{await browser.close();}

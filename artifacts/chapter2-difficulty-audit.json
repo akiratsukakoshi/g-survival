@@ -42,7 +42,7 @@
   },
   "ready": {
     "ready": true,
-    "glow": 0.11583427365347665
+    "glow": 0.02000059585812379
   },
   "growth": {
     "before": 1.29999999999999,
@@ -62,10 +62,21 @@
       "injuries": []
     }
   },
-  "persisted": {
-    "bodySize": 1.2,
-    "visualScale": 1.2,
-    "speed": 1.12
+  "restarted": {
+    "bodySize": 1.02,
+    "visualScale": 1.02,
+    "speed": 1,
+    "molted": false,
+    "atStart": true,
+    "passedNarrow": true,
+    "ready": true
+  },
+  "replay": {
+    "survivors": 13,
+    "bodySize": 1.02,
+    "molted": false,
+    "atStart": true,
+    "ready": true
   },
   "cover": [
     {

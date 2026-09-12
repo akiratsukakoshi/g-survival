@@ -9,7 +9,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 - プロジェクト: G-survival -隙間の生- 全章構想（現在は第1章完成・第2章基礎着手）
 - 技術: three.js + TypeScript + Vite / **斜俯瞰3D(第1章は33×33の屋根裏・壁登りあり)**
-- 状態: **第2章は2026-09-12の追加指摘を受け、ヤモリ2体を3倍へ拡大・射程調整、MをB18へ移しC18〜E18の広い隙間と明るい床で差別化。生物寸法の根拠と検証は `docs/chapter2-gecko-scale.md`。実機難易度・FPS・気づきやすさはガクチョ確認待ち。最新の回帰結果は§6。**
+- 状態: **第2章は2026-09-12の追加指摘を受け、ヤモリ2体を3倍へ拡大・射程調整、M=B18/C18〜E18=広い隙間。続く指摘で新しい開始は3齢1.02へ戻し、Mは局所光なし・暗い緑灰色へ修正。ヤモリ調整はガクチョ受け入れ済み。生物寸法の根拠と検証は `docs/chapter2-gecko-scale.md`。実機難易度・FPS・気づきやすさはガクチョ確認待ち。最新の回帰結果は§6。**
 - ブランチ: `main` 直コミット運用(§5)
 - 最新コミット時点の記録: `IMPLEMENTATION_STATUS.md`(修正・検証結果) / `SPEC_GAP_AUDIT.md`(2026-09-06時点の差分監査、**現在の未実装一覧ではない**)
 - 一次仕様: `gokiburi_ch1_spec.md`(変更しない。仕様変更は本ファイル §4 に記録する)
@@ -27,14 +27,14 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 | 生物の3D造形・アニメ | `src/animals.ts` | — | 空き |
 | 脱皮演出 | `src/molt.ts` | — | 空き |
 | 音響 | `src/audio.ts` | — | 空き |
-| 検証スクリプト | `*.mjs`, `scripts/` | — | 空き（2026-09-12追加調整・検証済み） |
+| 検証スクリプト | `*.mjs`, `scripts/` | — | 空き（2026-09-12再開始修正） |
 | Blender幼齢素材 | `C:\Users\tukap\blender-work\roach_codex.py`, `codex_v6/` | — | 空き |
 | Blenderムカデ確認素材 | `assets/centipede-source/` | — | 空き |
 | Blenderヤモリ確認素材・GLB | `assets/gecko-source/`, `public/models/gecko.glb` | — | 空き（GLB接続済み） |
 | ヤモリ描画・骨格アニメ | `src/gecko.ts`, `gecko-audit.mjs`, `docs/gecko-integration.md` | — | 空き（2026-09-12追加調整・検証済み） |
 | 第2章ヤモリ接続（import/生成/renderのみ） | `src/chapter2.ts` のヤモリ描画呼出し | — | 接続済み・解放（章回帰PASS） |
 | 第2章ムカデGLB受け口・アニメ | `src/centipede.ts` | — | 空き |
-| 第2章迷路・レイアウト | `src/chapter2.ts`, `src/chapter2-maze.ts`, `chapter2-*.mjs` | — | 空き（2026-09-12追加調整・検証済み） |
+| 第2章迷路・レイアウト | `src/chapter2.ts`, `src/chapter2-maze.ts`, `chapter2-*.mjs` | — | 空き（2026-09-12再開始修正） |
 | GLB受け口 | `src/nymph.ts` | — | 空き |
 | 第2章2Dマップ出力 | `scripts/export-chapter2-map.py`, `artifacts/chapter2-map-2d.png` | — | 空き（2026-09-12追加調整・検証済み） |
 | ドキュメント | `*.md` | 共有(追記のみ) | — |
@@ -50,6 +50,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 | # | 日付 | From→To | 状態 | 内容 |
 |---|---|---|---|---|
+| 020 | 2026-09-12 | Codex→Claude | OPEN | **章頭の4齢化を修正、Mを減光。** `src/chapter2.ts`で章頭の新規開始/リロード/もう一度を3齢1.02に統一、章1からの匹数は保持。位置の途中再開がないのに保存済み成長だけ適用していた不整合。旧4齢データは削除不要。Mの自己発光/局所光を撤去し床色#222923へ。ヤモリはガクチョ受け入れ・変更なし。`chapter2-difficulty-audit.mjs`で旧保存からのB07通過/B18準備、再プレイ13匹を確認。buildと第2章監査はPASS。第1章browser/nymphは一括・単独各1回とも待機タイムアウト、未解消。詳細 `artifacts/chapter2-restart-verification.txt`。次は同2件の安定性を切り分け、通常入力/脱皮の回帰を維持。今回分コミット、pushなし、オーナー解放。 |
 | 019 | 2026-09-12 | Codex→Claude | OPEN | **ヤモリ拡大・脱皮場所を追加調整。** `docs/chapter2-gecko-scale.md`参照。`src/chapter2-maze.ts`のM=B18/C18〜E18=2、`chapter2.ts`のヤモリ生成1.2（2体を3倍）・検知12/突進.9秒/頭部カプセル・縦向き初期姿勢・Mの明るい床と局所光。`src/gecko.ts`で遊脚の着地点を脚長内へ補正。公開API/模型座標は維持。verify.sh最終全PASS・SKIPなし、gecko-auditの.4/1.2ともPASS、通常キー入力で脱皮なし5/8・あり7/8匹で到達。2D/入口/部屋PNGを確認。次の担当は実プレイ指摘に応じて調整し、予告・遮蔽・拡大骨格監査・両経路を維持。全身の地形衝突と実機FPS/難易度/気づきやすさは未完。018のD18座標等は本件で更新、同OPENは保持。今回分をコミット、push未実施。オーナー解放。 |
 | 018 | 2026-09-12 | Codex→Claude | OPEN | **ガクチョ指定の第2章難易度・地形調整を実装。** `docs/chapter2-difficulty.md`参照。`src/chapter2-maze.ts`に3巡回経路/2横断行/2巣、D18=M、D27/28=1・J27/28=2、B29〜M40大部屋。`parseMaze()`のcentipedes/gejis/lairs、`chapter2Test`の配列snapshotと個体指定を追加し、旧先頭個体APIを維持。モデル座標/API/素材は不変。断熱材はenemy不可・視線遮蔽。M発光、幅1.20・速度1.12倍を実装。再現はverify.shと難易度監査、2D再生成。全検証項目は初回一括＋失敗した時間依存監査の修正後再実行でPASS（詳細ログあり、一括全PASSとは記録しない）。次の担当は実プレイ指摘に応じて調整し、予告・遮蔽・両身体幅の通常入力走破を維持。全身衝突/FPS/難易度の最終判断は残件。オーナー解放。2026-09-12 ガクチョ確認・指示でd27b2b6をpush済み。 |
 | 017 | 2026-09-12 | Codex→Claude | OPEN | **ヤモリGLB接続・骨格動作完了。** `docs/gecko-integration.md`参照。`public/models/gecko.glb`は68骨・単一スキン/材質・2K色/法線。`src/gecko.ts` の `loadGecko/createGecko/animateGecko`へ接続済み。`chapter2.ts`はimport/ロード/生成/renderと開発snapshotのgeckoVisualのみ変更、危険判定・難易度値は保持。world(x,-simY,z=-.095)、+X前方/+Z背中、原点は吻先。外側rotation/scaleを重ねない。距離駆動の踏み替え・二節IK・指屈伸・呼吸/予告回頭・尾追従・後ずさり。スケール.4等はAI暫定。`node gecko-audit.mjs` / `node assets/gecko-source/chapter_integration_audit.mjs` / build / verify.sh全PASS（SKIPなし）。次の担当は調整後に同監査を実行し、既存mode/座標の受け渡しを維持。実機の自然さ/FPS・全身と迷路壁の干渉は残件。接続オーナー解放済み。 |
@@ -91,6 +92,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 ### 第2章「壁の中」
 
+- G02-07: **再開始の齢とMの明度を修正（2026-09-12）**。古い4齢保存データでも章頭は3齢1.02、引継ぎ匹数を維持。Mの自己発光/局所光を撤去し暗い緑灰色へ。B07通行・B18準備・再プレイ/13匹引継ぎを回帰条件に追加。ヤモリはガクチョ受け入れ済みで変更なし。最終検証は§6。
 - G02-06: **追加調整実装（2026-09-12）**。ヤモリを2体のまま3倍（生成scale 1.2）、検知12・突進.9秒・頭部捕食域へ調整（AI暫定値）。M=B18、C18/D18/E18=2、淡い床と局所光で退避穴との差別化。拡大個体の着地点補正と描画距離も対応。`docs/chapter2-gecko-scale.md`。最新検証は§6、実機難易度/FPSと全身の地形衝突は残件。
 - G02-05: **指定配置・難易度調整を実装・ガクチョ確認「いい感じ」（2026-09-12）**。`docs/chapter2-difficulty.md` / `artifacts/chapter2-map-2d.png`。ムカデ3・ゲジ2・ヤモリ2、B07=1、D18=M/E18=2/I18=山、D27/28=1・J27/28=2、B29〜M40を大部屋に。Mで準備発光、脱皮後1.20・速度12%増（倍率と山配置、ヤモリ半径9はAI暫定）。状態監査と退避を使う通常入力で脱皮あり/なしの両経路を確認。全身障害物接触、実機FPS、初見難易度・怖さは未判定/残件。
 - G02-04: **迷路化 実装完了・ガクチョ受け入れ(2026-09-12「だいぶ遊べるゲームになった」)**。ガクチョ指摘5点(高低差と見た目の不一致 / 見えない壁の移動限界 / ゴール不明 / 迷路にしたい / 冒頭散開が不自然)に対応。`src/chapter2-maze.ts` の手書き ASCII 迷路(乱数なし)から壁・隙間・ポケット・山・穴を描画し、同じデータで衝突判定。BFS で 1.02/1.20 の到達性、行き止まり 11、最短 128 セルを機械検証。キー入力のみの走破で 8/8 匹・約 74 秒(既知経路の全力走行であり初見時間ではない)。**未判定(ガクチョ実機)**: 迷う楽しさ、初見 8〜10 分、恐怖感、穴が行き先だと無説明で伝わるか、壁メッシュ増加後の FPS、霧 .03 の暗さ。設計判断でガクチョに見てほしい点: ムカデ列を主経路の縦断路ではなく袋小路(巣)にした(縦断路だと正面衝突で必ず捕まるため)。詳細 `docs/chapter2-maze-design.md` / `docs/chapter2-maze-implementation.md`。
@@ -167,6 +169,15 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 ---
 
 ## 6. セッションログ
+
+### 2026-09-12 / Codex / 再開始の3齢復帰・脱皮場所を減光
+
+- **原因・修正**: 保存された4齢1.20を使いながら位置だけ章頭へ戻していた。新しい挑戦は必ず3齢1.02、匹数引継ぎを維持。古い保存データの削除は不要。前回の「再読込1.20」合格条件も誤りとして修正。Mは自己発光と専用ライトを撤去、暗い緑灰色#222923（AI暫定）へ。ヤモリはガクチョ受け入れ、変更なし。
+- **変更ファイル**: `src/chapter2.ts`, `chapter2-difficulty-audit.mjs`, `docs/chapter2-gecko-scale.md`, `docs/chapter2-difficulty.md`, `map.md`, 本件の脱皮PNG/監査JSON/検証ログ。
+- **検証**: build/diff-check、smoke/playthrough/maze、第2章の状態/難易度/通常入力走破PASS。旧4齢保存から章頭3齢、B07をキー入力で通過、B18で準備、再開始ボタンで章頭3齢・13匹引継ぎを確認。脱皮なし5/8・104.2秒、あり7/8・148.8秒。入口と内部のPNGで暗さ・準備発光を目視。
+- **未解消の検証**: 必須verifyは第1章browserの脱皮準備30秒、nymphの再開始ボタン30秒待機でNG。失敗2件だけ単独再実行し、browserは脱皮開始15秒、nymphは開始ボタン30秒で再びタイムアウト。全PASSとはしない。ログ `artifacts/chapter2-restart-verification.txt`。第1章本体・同監査は今回変更していない。
+- **未完・Git**: 実プレイでのMの色味/気づきやすさはガクチョ判断待ち。前セッションの全身地形干渉等は残件。開始時の既存検証生成物を限定退避/pull最新/復元。本件だけコミット、push未実施。INBOX020、過去OPEN維持。
+- **オーナー解放**: 第2章レイアウト・検証を解放。
 
 ### 2026-09-12 / Codex / ヤモリ3倍とB18の明るい脱皮場所
 

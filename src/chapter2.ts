@@ -17,7 +17,8 @@ export function readProgress():ChapterSave{try{const v=JSON.parse(localStorage.g
 export function completeChapterOne(survivors:number){const s:ChapterSave={...readProgress(),unlockedChapter:2,currentChapter:2,survivors:Math.max(1,survivors),instar:3,bodySize:1.02};localStorage.setItem(SAVE_KEY,JSON.stringify(s));}
 
 export async function mountChapterTwo(){
- const save=readProgress();if(!location.search.includes('from=chapter1')&&save.unlockedChapter<2){save.survivors=8;save.instar=3;save.bodySize=1.02;}
+ // 位置の途中再開は未実装。章頭からの新しい挑戦は必ず3齢、引継ぎ匹数だけ保持する。
+ const save=readProgress();if(!location.search.includes('from=chapter1')&&save.unlockedChapter<2)save.survivors=8;save.instar=3;save.bodySize=1.02;
  document.title='G-survival — 第2章 壁の中';document.querySelector('#app')!.innerHTML=`<canvas id="shaft"></canvas><div class="vignette"></div><header><span class="mark">G-survival <small>— 隙間の生 —</small></span><span class="chapter">CHAPTER 02 / 壁の中</span></header><div id="entry"><div class="eyebrow">LATE SUMMER / THIRD INSTAR</div><h1>壁の中</h1><p class="story">白い帯は、いつの間にか薄くなった。<br>身体は大きくなり、昨日までの隙間に、胸が触れる。</p><p class="goal"><b>下へ。</b><br>壁の中を、一階分だけ降りる。<br>兄弟の気配は遠ざかり、脚の多い影が近づく。</p><button id="begin" disabled>壁の中を読み込み中…</button><small>この壁へ入った群れ: ${save.survivors}匹</small></div><aside id="hud"><div id="population">${save.survivors} 匹</div><div id="objective">断熱材の層</div></aside><div id="warning"></div><div id="controls">WASD / 矢印：這う　·　Shift：走る　·　左長押し：隙間を測る</div><div id="ending" hidden><div class="eyebrow">CHAPTER 02 / FOUNDATION</div><h2></h2><p></p><button id="again">もう一度、壁の中へ ↗</button></div><footer><span>PERIPLANETA FULIGINOSA</span><span>02 — IN THE WALL</span></footer>`;
  await Promise.all([loadAnimals(),loadCentipede(),loadGecko()]);
  const grid=parseMaze(),BOARD_W=ORIGIN_X*2+grid.cols*CELL,BOARD_H=grid.rows*CELL+2;
@@ -37,9 +38,8 @@ export async function mountChapterTwo(){
  // 見た目＝当たり判定。壁は材木ボックス、隙間は2本の柱、ポケットは窪み、山は台形メッシュ。
  for(const w of grid.walls)box(w.x+w.w/2,w.y+w.h/2,WALL_H/2,w.w,w.h,WALL_H,timber);
  for(const s of grid.slits){const jamb=(CELL-s.width)/2;if(s.axis==='v'){box(s.x-s.width/2-jamb/2,s.y,WALL_H/2,jamb,CELL,WALL_H,timber);box(s.x+s.width/2+jamb/2,s.y,WALL_H/2,jamb,CELL,WALL_H,timber);}else{box(s.x,s.y-s.width/2-jamb/2,WALL_H/2,CELL,jamb,WALL_H,timber);box(s.x,s.y+s.width/2+jamb/2,WALL_H/2,CELL,jamb,WALL_H,timber);}}
- const moltMat=new THREE.MeshStandardMaterial({color:'#d4c9a0',emissive:'#dccb91',emissiveIntensity:.28,roughness:1});
+ const moltMat=new THREE.MeshStandardMaterial({color:'#222923',roughness:1});
  for(const p of grid.pockets)box(p.x,p.y,-.2,CELL-.12,CELL-.12,.5,p.ch==='M'?moltMat:voidMat);
- const moltLight=new THREE.PointLight('#e5d6a6',3,9);moltLight.position.set(grid.molt.x,-grid.molt.y,.6);scene.add(moltLight);
  for(const m of grid.mounds){const geometry=new THREE.PlaneGeometry(m.w,m.h,24,24),positions=geometry.attributes.position;for(let i=0;i<positions.count;i++){const x=positions.getX(i)+m.x+m.w/2,y=-positions.getY(i)+m.y+m.h/2;positions.setXYZ(i,x,-y,heightAt(x,y));}geometry.computeVertexNormals();const mound=new THREE.Mesh(geometry,insulation);mound.castShadow=mound.receiveShadow=true;scene.add(mound);}
  const slipper=box(grid.goal.x,grid.goal.y,-3.4,5,1.4,.3,voidMat);slipper.visible=false;
  const hero=createAnimal('roach',save.bodySize),heroSurface=new THREE.Group();heroSurface.add(hero);scene.add(heroSurface);
