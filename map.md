@@ -28,7 +28,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 | 脱皮演出 | `src/molt.ts` | — | 空き |
 | 音響 | `src/audio.ts` | — | 空き |
 | 検証スクリプト | `*.mjs`, `scripts/` | — | 空き（2026-09-12再開始修正） |
-| Blender3齢確認素材 | `assets/third-instar-source/` | — | 空き（PNG3方向・ガクチョ確認待ち） |
+| Blender3齢確認素材 | `assets/third-instar-source/` | — | 空き（PNG承認・GLB作成済み、本番未反映） |
 | Blender幼齢素材 | `C:\Users\tukap\blender-work\roach_codex.py`, `codex_v6/` | — | 空き |
 | Blenderムカデ確認素材 | `assets/centipede-source/` | — | 空き |
 | Blenderゲジ確認素材 | `assets/geji-source/` | — | 空き（PNG3方向・ガクチョ確認待ち） |
@@ -113,7 +113,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 ### 素材制作
 
-- A05 3齢Blender素材: 写真3枚を参考に `assets/third-instar-source/` にPNG3方向とblendを作成。第1章脱皮後/第2章開始用。GLBなし、造形はガクチョ確認待ち。
+- A05 3齢Blender素材: ガクチョPNG承認。`assets/third-instar-source/export/` に静止GLB作成・再読込PASS。本番未反映（別セッション作業中）、リグ/歩行/脱皮・実機検証は今後。
 
 - A04 ゲジBlender素材: 添付3画像を参考に同一モデルの真上・斜俯瞰・真横PNGを制作。`assets/geji-source/`。GLB化せずガクチョの造形確認待ち。
 
@@ -175,6 +175,14 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 ---
 
 ## 6. セッションログ
+
+### 2026-09-12 / Codex / 承認済み3齢モデルのGLB化（本番反映前）
+
+- **成果物**: `assets/third-instar-source/export/roach-third-instar.glb`、`export_glb.py`、再読込検証JSON、README更新。Windows編集元のthird_instar_codex_v1/exportにもコピー。
+- **検証**: Blender再読込PASS。417メッシュ・61,792三角形・6材質・境界寸法一致、1,909,072 bytes。床/カメラ/照明なし。buildとverify.shの非ブラウザー項目PASS、ブラウザーは接続不可SKIP（合格ではない）。証跡は同素材verification/glb-*。
+- **未完/引継ぎ**: ガクチョはPNG承認、本番は別セッション作業中のため反映前までを指示。public/models・srcは未変更。静止GLBでリグ/歩行なし、微細なNoise/Bump未収録。色/粗さと承認形状を保持。GLBは+X前方/+Y背中、Blender復元はX+90度。次の担当は反映指示後にREADMEの軽量化・骨格・脱皮・複製・実機検証残件を確認。
+- **Git/オーナー**: 別作業のdirty変更を保持、pullは停止・fetchで未取込0を確認。今回分のみコミット、pushなし。専用素材オーナー解放。
+
 
 ### 2026-09-12 / Codex / 3齢相当ゴキブリのBlender確認モデル
 

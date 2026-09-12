@@ -1,0 +1,40 @@
+{
+  "roundtrip": "PASS",
+  "before": {
+    "objects": 417,
+    "triangles": 61792,
+    "bounds_min": [
+      -2.1523029804229736,
+      -2.1400811672210693,
+      0.02102695032954216
+    ],
+    "bounds_max": [
+      4.5116777420043945,
+      2.1400811672210693,
+      0.9699999690055847
+    ]
+  },
+  "after": {
+    "objects": 417,
+    "triangles": 61792,
+    "bounds_min": [
+      -2.1523029804229736,
+      -2.1400811672210693,
+      0.021026941016316414
+    ],
+    "bounds_max": [
+      4.5116777420043945,
+      2.1400811672210693,
+      0.9699999690055847
+    ]
+  },
+  "bytes": 1909072,
+  "materials": 6,
+  "static_asset": true,
+  "rigged": false,
+  "animations": 0,
+  "source_coordinates": "+X forward / +Z dorsal",
+  "gltf_coordinates": "+X forward / +Y dorsal (export_yup conversion)",
+  "material_limitation": "PBR base color and roughness preserved; procedural microscopic Noise/Bump not included",
+  "production_integrated": false
+}
