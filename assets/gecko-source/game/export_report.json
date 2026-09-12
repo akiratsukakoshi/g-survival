@@ -1,0 +1,13 @@
+{
+  "vertices": 18409,
+  "triangles": 36603,
+  "bones": 68,
+  "materials": 1,
+  "texture_size": 2048,
+  "bytes": 6895612,
+  "export": "GLB",
+  "forward": "+X",
+  "native_dorsal": "+Y",
+  "runtime_dorsal": "+Z",
+  "authoring_blend_unchanged": true
+}

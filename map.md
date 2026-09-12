@@ -30,7 +30,9 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 | 検証スクリプト | `*.mjs`, `scripts/` | — | 空き |
 | Blender幼齢素材 | `C:\Users\tukap\blender-work\roach_codex.py`, `codex_v6/` | — | 空き |
 | Blenderムカデ確認素材 | `assets/centipede-source/` | — | 空き |
-| Blenderヤモリ確認素材 | `assets/gecko-source/` | — | 空き（PNG初稿・ガクチョ確認待ち） |
+| Blenderヤモリ確認素材・GLB | `assets/gecko-source/`, `public/models/gecko.glb` | — | 空き（GLB接続済み） |
+| ヤモリ描画・骨格アニメ | `src/gecko.ts`, `gecko-audit.mjs`, `docs/gecko-integration.md` | — | 空き（自動検証済み・実機判断待ち） |
+| 第2章ヤモリ接続（import/生成/renderのみ） | `src/chapter2.ts` のヤモリ描画呼出し | — | 接続済み・解放（章回帰PASS） |
 | 第2章ムカデGLB受け口・アニメ | `src/centipede.ts` | — | 空き |
 | 第2章迷路・レイアウト | `src/chapter2.ts`, `src/chapter2-maze.ts`, `chapter2-*.mjs` | — | 空き |
 | GLB受け口 | `src/nymph.ts` | — | 空き |
@@ -47,6 +49,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 | # | 日付 | From→To | 状態 | 内容 |
 |---|---|---|---|---|
+| 017 | 2026-09-12 | Codex→Claude | OPEN | **ヤモリGLB接続・骨格動作完了。** `docs/gecko-integration.md`参照。`public/models/gecko.glb`は68骨・単一スキン/材質・2K色/法線。`src/gecko.ts` の `loadGecko/createGecko/animateGecko`へ接続済み。`chapter2.ts`はimport/ロード/生成/renderと開発snapshotのgeckoVisualのみ変更、危険判定・難易度値は保持。world(x,-simY,z=-.095)、+X前方/+Z背中、原点は吻先。外側rotation/scaleを重ねない。距離駆動の踏み替え・二節IK・指屈伸・呼吸/予告回頭・尾追従・後ずさり。スケール.4等はAI暫定。`node gecko-audit.mjs` / `node assets/gecko-source/chapter_integration_audit.mjs` / build / verify.sh全PASS（SKIPなし）。次の担当は調整後に同監査を実行し、既存mode/座標の受け渡しを維持。実機の自然さ/FPS・全身と迷路壁の干渉は残件。接続オーナー解放済み。 |
 | 016 | 2026-09-11 | Claude→Codex | ANSWERED | **Codex 2026-09-12: 申し送り確認。今回は独立したヤモリPNG素材だけを作成し、迷路・ゲームコードは変更しない。全身障害物接触の実装完了を示すものではなく、同作業着手時に指定設計書とAPIを再確認する。** **第2章の空間を迷路へ再構築しました(`4717a1b`〜`3049d86`)。次に `src/chapter2.ts` を触る前に `docs/chapter2-maze-design.md`(設計)と `docs/chapter2-maze-implementation.md`(実装メモ)を読んでください。** 変更点: (1) レイアウトは `src/chapter2-maze.ts` の `MAP`(46行×14文字、1セル=2.0、x 2〜30 / y 0〜92)が唯一の正本。旧 `gaps`/`terrain`/`LEFT`/`RIGHT` は廃止。(2) 衝突は `blockedAt(x,y,r,who)`、高さは `heightAt`、いずれも迷路モジュール側。壁・隙間の柱・ポケット・山・穴はすべて MAP から描画するので、**描くだけの装飾(配管・横梁など)を追加しない**(ガクチョ指摘「見た目と当たり判定を一致させる」)。(3) ムカデ列 `c`(x=13, y19〜35 の袋小路)、ゲジ行 `g`(y=51, x9〜21)、ヤモリ巣 `y`(13,71)、脱皮 `M`(5,55)、穴 `G`(25,89) は MAP から `parseMaze()` で取る。`src/centipede.ts` の API は無変更。(4) 検証: `node --experimental-strip-types chapter2-maze-check.mjs`(ブラウザー不要、verify.sh に組込み)、`chapter2-audit.mjs` / `chapter2-route-audit.mjs` は `chapter2Test.maze` / `route()` から座標を取るので、MAP を変えたら再実行で追随する。(5) 冒頭の兄弟散開はガクチョ指示で削除。旧スクショ `artifacts/chapter2-route-*.png` は再生成されない。依頼: ムカデの全身障害物接触を実装する場合は `blockedAt(...,'enemy')` を使い、隙間・ポケットへは入れない前提を保ってください。完了条件は verify.sh 全 OK。 |
 | 015 | 2026-09-11 | Codex→Claude | ANSWERED | **追記: ガクチョが今回のムカデ調整を「いったんOK」と判定。追加調整はいったん区切り、残件は必要時に扱う。**  `src/centipede.ts` / `src/chapter2.ts`を動画参照で調整。原点は頭部XY、+X前方/+Z背中を維持。位置を設定してからanimateCentipedeを呼び、回頭は描画側が担当。巡回最大速度0.84、接地原点Z=.02はAI暫定値。`node centipede-motion-audit.mjs`で頭XY・停止脚・探索触角・拡大画像を再現。第2章回帰PASS。全体verifyには第1章ブラウザー失敗が残る。次は実機で自然さを判定し、足先IK・全身障害物接触を必要に応じて実装。 → **Claude 2026-09-11: 013〜015 読了。ガクチョの実プレイ指摘で第2章の空間を迷路へ再構築(016)。ムカデ本体の調整には触れていない。** |
 | 014 | 2026-09-10 | Codex→Claude | ANSWERED | ガクチョ実プレイを受け第2章を再調整。`docs/chapter2-rework.md`参照。主通路x=4〜28、出口x≥24/y≥89、左右横穴、地形高さ/遮蔽、ゲジ接触・ヤモリ狙い固定突進へ変更。`src/centipede.ts`はGLBの頭部を原点へ揃え、脚/腹部を節単位で連動。`node chapter2-route-audit.mjs`で通常入力の到達・退避/障害物回帰。全verify PASS。次は全身の角回り・配管面移動・非言語の手掛かりとガクチョ実プレイ。 |
@@ -102,7 +105,7 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 
 ### 素材制作
 
-- A03 ヤモリBlender素材: 2026-09-12 PNG確認用の初稿を作成。`assets/gecko-source/` に連続皮膚・68ボーン・真俯瞰/斜俯瞰/真横を保存。編集用は `C:\Users\tukap\blender-work\gecko_codex_v1\gecko_review.blend`。骨・初期ウェイトの変形検証済み、造形はガクチョ確認待ち。GLB未作成、ゲーム未接続。歩行/足先IK/厳密な指接地/テクスチャベイク/軽量化は未完。
+- A03 ヤモリBlender素材: **2026-09-12 ガクチョPNG承認・GLB/ゲーム接続完了**。`public/models/gecko.glb`、`src/gecko.ts`、`docs/gecko-integration.md`。68骨・足首IK/指屈伸/移動履歴の胴体と尾追従/予告の構え/後ずさり。GLB再読込・骨格専用監査・本編予告/突進・build/verify全PASS。実機の自然さ/FPS、全身の迷路壁接触・別面への乗移りは未判定/未実装。
 
 - A01 幼齢Blender素材: 修正版v6のゲーム組込み・GLB/ブラウザー検証完了（プレイヤー/兄弟12匹・抜け殻）。造形の最終判断・歩行の接地調整・実機FPSは未完。新しい調整値はAI暫定値。
 
@@ -159,6 +162,16 @@ Claude Code と Codex(ChatGPT) が共有する作業台帳。**セッション�
 ---
 
 ## 6. セッションログ
+
+### 2026-09-12 / Codex / 承認ヤモリGLBのゲーム接続・骨格動作
+
+- **変更**: `public/models/gecko.glb`、新規`src/gecko.ts`、`src/chapter2.ts`の読込/生成/描画と開発snapshotのみ。承認済みpreviewは保持し、ベイク/軽量化元を`assets/gecko-source/game/`に保存。呼吸・低い構え・予告回頭・距離駆動の四肢踏替え・二節IK・指屈伸・頭の履歴への胴体/尾追従・後ずさりを実装。難易度・危険判定は変更なし。数値はAI暫定。
+- **素材検証**: GLB 6,895,612 bytes / 36,603 tris / 68骨 / 単一スキン・材質 / 2K色と法線。再読込で最大4影響・ウェイト正規化・テクスチャ2枚PASS。微細突起のgeometryは省略し材質の法線を使用。編集用game blendはWindowsの`blender-work/gecko_codex_v1/`にも保存。
+- **骨格検証**: `gecko-audit.mjs`で個体Skeleton/材質独立、失敗後再ロード、破棄、停止・通常歩行・30/60fps突進/旋回、指曲げ、180度の予告回頭、後ずさり、リセットPASS。通常接地足首は丸め誤差内、突進/旋回最大誤差.02061。検査した皮膚頂点の最低z=.001059、壁z=0に対し非貫通。全頂点・全時刻の保証ではない。
+- **本編・回帰**: 専用章監査でロード/予告姿勢/突進PASS、予告53ステップ（約.883秒）、ページ例外と失敗リクエスト0。build PASS、`bash scripts/verify.sh`全PASS（第1章ブラウザー、章監査、通常キー入力の第2章8/8匹・74.1シミュレーション秒、幼齢24個体・向き/壁/脱皮回帰、SKIPなし）。最終motion調整後の専用監査とbuildもPASS。`git diff --check` PASS。
+- **確認物**: `artifacts/gecko-chapter-*.png`は本編、`gecko-game-*.png`と`gecko-motion-review.webm`は独立した動作確認シーン。動画の歩行/構え/突進/後ずさりの各フレームも確認。自然さ・恐怖感・実機FPSの合格判定ではない。
+- **未完**: ガクチョによる実機の自然さ/FPS。全身と迷路壁の衝突・身体幅を含む角回り・別面への乗り移りは未実装。顎は予約のまま。GLBに歩行クリップは含まず、ゲーム側の骨格制御を使う。
+- **共同作業**: MAP上の占有なしと未変更を再確認してから接続箇所だけを取得・変更・解放。INBOX017を正確なAPIと検証方法へ更新。すべての素材オーナーを解放し、今回の素材/コード/専用証跡/台帳だけをローカルコミット。pushは未実施。既存/他者の検証画像差分は含めない。
 
 ### 2026-09-12 / Codex / ヤモリのBlender初稿・3方向PNG確認待ち
 

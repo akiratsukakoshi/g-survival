@@ -1,0 +1,12 @@
+{
+  "roundtrip": "PASS",
+  "bones": 68,
+  "mesh_count": 1,
+  "vertices": 24926,
+  "triangles": 36603,
+  "max_vertex_influences": 4,
+  "normalized_weights": true,
+  "images": 2,
+  "bytes": 6895612,
+  "mesh_repaired": false
+}
